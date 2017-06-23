@@ -21,15 +21,20 @@ const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
                                                         {1,  -1}};
 
 typedef struct {
-    double macroscopicDensity;        //макроскопическая плотность
-    double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
-    double particleDistribution[LATTICE_DIRECTIONS];        //распределения частиц по направлениям
-    double tmp[LATTICE_DIRECTIONS];
+	double Dencity;//Г¬Г ГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї ГЇГ«Г®ГІГ­Г®Г±ГІГј
+	double Velocity[2];    //Г¬Г ГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї Г±ГЄГ®Г°Г®Г±ГІГј, 0 - ГЈГ®Г°ГЁГ§Г®Г­ГІГҐГ«ГјГ­Г®, 1 - ГўГҐГ°ГІГЁГЄГ Г«ГјГ­Г®
+} MacroNode;
+
+typedef struct {
+	MacroNode macroParameters;
+    double equilibriumDistribution[LATTICE_DIRECTIONS];        //Г°Г ГўГ­Г®ГўГҐГ±Г­Г®ГҐ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ
+    double particleDistribution[LATTICE_DIRECTIONS];		//Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГї Г·Г Г±ГІГЁГ¶ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬
+	double tmp[LATTICE_DIRECTIONS];
 } GridNode;
 
 typedef struct {
-    int height, width;            //размеры сетки
-    double relaxationTime, latticeSpeed;        //время релаксации и скорость сетки
+    int height, width;            //Г°Г Г§Г¬ГҐГ°Г» Г±ГҐГІГЄГЁ
+    double relaxationTime, latticeSpeed;        //ГўГ°ГҐГ¬Гї Г°ГҐГ«Г ГЄГ±Г Г¶ГЁГЁ ГЁ Г±ГЄГ®Г°Г®Г±ГІГј Г±ГҐГІГЄГЁ
     GridNode **nodes;
 } Grid;
 
@@ -49,10 +54,10 @@ double scalarMultiplication(double *first, double *second);
 double cosBetweenVectors(double *first, double *second);
 
 /**
- * @param particleDistribution распределение частиц по направлениям
- * @param macroscopicDensity микроскопическая плотность в точке
- * @param latticeSpeed скорость сетки
- * @param result микроскопическая скорость в точке
+ * @param particleDistribution Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г·Г Г±ГІГЁГ¶ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬
+ * @param macroscopicDensity Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї ГЇГ«Г®ГІГ­Г®Г±ГІГј Гў ГІГ®Г·ГЄГҐ
+ * @param latticeSpeed Г±ГЄГ®Г°Г®Г±ГІГј Г±ГҐГІГЄГЁ
+ * @param result Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї Г±ГЄГ®Г°Г®Г±ГІГј Гў ГІГ®Г·ГЄГҐ
  */
 void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result) {
     double temp[2];
@@ -71,8 +76,8 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
 }
 
 /**
- * @param particleDistribution распределение частиц по направлениям
- * @return микроскопическая плотность в точке
+ * @param particleDistribution Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г·Г Г±ГІГЁГ¶ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬
+ * @return Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї ГЇГ«Г®ГІГ­Г®Г±ГІГј Гў ГІГ®Г·ГЄГҐ
  */
 double calculateDensity(double *particleDistribution) {
     double density = 0;
@@ -84,10 +89,10 @@ double calculateDensity(double *particleDistribution) {
 }
 
 /**
- * @param direction направление
- * @param latticeSpeed скорость сетки
- * @param velocity микроскопическая скорость
- * @return Коэффициент для вычисления равновесного распределения по направлениям
+ * @param direction Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГҐ
+ * @param latticeSpeed Г±ГЄГ®Г°Г®Г±ГІГј Г±ГҐГІГЄГЁ
+ * @param velocity Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї Г±ГЄГ®Г°Г®Г±ГІГј
+ * @return ГЉГ®ГЅГґГґГЁГ¶ГЁГҐГ­ГІ Г¤Г«Гї ГўГ»Г·ГЁГ±Г«ГҐГ­ГЁГї Г°Г ГўГ­Г®ГўГҐГ±Г­Г®ГЈГ® Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГї ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬
  */
 double s(int direction, double latticeSpeed, double *velocity) {
     double scalar = scalarMultiplication((double *) elementalVectors[direction], velocity);
@@ -97,12 +102,12 @@ double s(int direction, double latticeSpeed, double *velocity) {
 }
 
 /**
- * @param latticeSpeed скорость сетки
- * @param density микроскопическая плотность
- * @param velocity микроскопическая скорость
- * @param result равновесное распределение по направлениям (OUT)
+ * @param latticeSpeed Г±ГЄГ®Г°Г®Г±ГІГј Г±ГҐГІГЄГЁ
+ * @param density Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї ГЇГ«Г®ГІГ­Г®Г±ГІГј
+ * @param velocity Г¬ГЁГЄГ°Г®Г±ГЄГ®ГЇГЁГ·ГҐГ±ГЄГ Гї Г±ГЄГ®Г°Г®Г±ГІГј
+ * @param result Г°Г ГўГ­Г®ГўГҐГ±Г­Г®ГҐ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬ (OUT)
  */
-void calculateEquilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
+void equilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
     int direction;
     for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
         result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
@@ -110,23 +115,23 @@ void calculateEquilibriumDistribution(double latticeSpeed, double density, doubl
 }
 
 /**
- * @param from вектор, который проецируется
- * @param to векток, на который нужно спроецировать
- * @return позитивный косинус угла между векторами в кубе, или 0
+ * @param from ГўГҐГЄГІГ®Г°, ГЄГ®ГІГ®Г°Г»Г© ГЇГ°Г®ГҐГ¶ГЁГ°ГіГҐГІГ±Гї
+ * @param to ГўГҐГЄГІГ®ГЄ, Г­Г  ГЄГ®ГІГ®Г°Г»Г© Г­ГіГ¦Г­Г® Г±ГЇГ°Г®ГҐГ¶ГЁГ°Г®ГўГ ГІГј
+ * @return ГЇГ®Г§ГЁГІГЁГўГ­Г»Г© ГЄГ®Г±ГЁГ­ГіГ± ГіГЈГ«Г  Г¬ГҐГ¦Г¤Гі ГўГҐГЄГІГ®Г°Г Г¬ГЁ Гў ГЄГіГЎГҐ, ГЁГ«ГЁ 0
  */
 double tangentProjectionCubed(double *from, double *to) {
-    //Так как здесь в качестве вектора to только элементарные вектора,
-    //можно просто умножить элементарный вектор на проекцию
+    //Г’Г ГЄ ГЄГ ГЄ Г§Г¤ГҐГ±Гј Гў ГЄГ Г·ГҐГ±ГІГўГҐ ГўГҐГЄГІГ®Г°Г  to ГІГ®Г«ГјГЄГ® ГЅГ«ГҐГ¬ГҐГ­ГІГ Г°Г­Г»ГҐ ГўГҐГЄГІГ®Г°Г ,
+    //Г¬Г®Г¦Г­Г® ГЇГ°Г®Г±ГІГ® ГіГ¬Г­Г®Г¦ГЁГІГј ГЅГ«ГҐГ¬ГҐГ­ГІГ Г°Г­Г»Г© ГўГҐГЄГІГ®Г° Г­Г  ГЇГ°Г®ГҐГЄГ¶ГЁГѕ
     double cos = cosBetweenVectors(from, to);
     return cos > 0 ? pow(cos, 3) : 0;
 }
 
 /**
- * Генерирует распределение частиц по направлениям в точке для формирования воронки.
- * @param centerOfGrid центр воронки
- * @param row строка
- * @param column столбец
- * @param result распределение частиц по направлениям в данной точке.
+ * ГѓГҐГ­ГҐГ°ГЁГ°ГіГҐГІ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г·Г Г±ГІГЁГ¶ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬ Гў ГІГ®Г·ГЄГҐ Г¤Г«Гї ГґГ®Г°Г¬ГЁГ°Г®ГўГ Г­ГЁГї ГўГ®Г°Г®Г­ГЄГЁ.
+ * @param centerOfGrid Г¶ГҐГ­ГІГ° ГўГ®Г°Г®Г­ГЄГЁ
+ * @param row Г±ГІГ°Г®ГЄГ 
+ * @param column Г±ГІГ®Г«ГЎГҐГ¶
+ * @param result Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г·Г Г±ГІГЁГ¶ ГЇГ® Г­Г ГЇГ°Г ГўГ«ГҐГ­ГЁГїГ¬ Гў Г¤Г Г­Г­Г®Г© ГІГ®Г·ГЄГҐ.
  */
 void generateTwisterData(double *centerOfGrid, int row, int column, double *result) {
     double perpendicular[2];
@@ -141,7 +146,7 @@ void generateTwisterData(double *centerOfGrid, int row, int column, double *resu
 void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
     double centerOfGrid = (gridSize - 1.) / 2;
     double center[2] = {centerOfGrid, centerOfGrid};
-    //инициализация решётки
+    //ГЁГ­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГї Г°ГҐГёВёГІГЄГЁ
     pg->height = pg->width = gridSize;
     pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
     pg->latticeSpeed = latticeSpeed;
@@ -157,11 +162,11 @@ void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
 }
 
 void FreeGrid(Grid *pg) {
-    //высвобождение ресурсов решётки
+    //ГўГ»Г±ГўГ®ГЎГ®Г¦Г¤ГҐГ­ГЁГҐ Г°ГҐГ±ГіГ°Г±Г®Гў Г°ГҐГёВёГІГЄГЁ
 }
 
-void VerStreaming(Grid *pg) {
-    //f1 вправо,f3 влево
+void VerStreaming(Grid* pg) {
+    //f1 ГўГЇГ°Г ГўГ®,f3 ГўГ«ГҐГўГ®
     for (int i = 0; i < pg->height; i++) {
         double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
         for (int j = pg->width - 2; j >= 0; j--) {
@@ -175,33 +180,52 @@ void VerStreaming(Grid *pg) {
     }
 }
 
+
 void Streaming(Grid *pg) {
-    //обработка распространения
-    //f0 никуда не двигается
-    VerStreaming(pg);
-    //f2 вверх, f4 вниз
-    for (int j = 0; j < pg->width; j++) {
-        double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
-        for (int i = pg->height - 2; i >= 0; i--) {
-            pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
-        }
-        pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
-        for (int i = 0; i < pg->height - 2; i++) {
-            pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
-        }
-        pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
-    }
-    //f6 влево вверх, f8 вправо вниз
-
-    //f5 вправо вверх, f7 влево вниз
-
+	//Г®ГЎГ°Г ГЎГ®ГІГЄГ  Г°Г Г±ГЇГ°Г®Г±ГІГ°Г Г­ГҐГ­ГЁГї
+	for (int i = 0; i < pg->height; i++)
+		for (int j = 0; j < pg->width; j++) {
+			pg->nodes[i][j].tmp[0] = pg->nodes[i][j].particleDistribution[0];
+			if (i == 0)
+				pg->nodes[i][j].tmp[4] = pg->nodes[i][j].particleDistribution[2];
+			else
+				pg->nodes[i][j].tmp[4] = pg->nodes[i - 1][j].particleDistribution[4];
+			if (j == 0)
+				pg->nodes[i][j].tmp[1] = pg->nodes[i][j].particleDistribution[3];
+			else
+				pg->nodes[i][j].tmp[1] = pg->nodes[i][j - 1].particleDistribution[1];
+			if (i == pg->height - 1)
+				pg->nodes[i][j].tmp[2] = pg->nodes[i][j].particleDistribution[4];
+			else
+				pg->nodes[i][j].tmp[2] = pg->nodes[i + 1][j].particleDistribution[2];
+			if (j == pg->width - 1)
+				pg->nodes[i][j].tmp[3] = pg->nodes[i][j].particleDistribution[1];
+			else
+				pg->nodes[i][j].tmp[3] = pg->nodes[i][j + 1].particleDistribution[3];
+			if (i == 0 || j == 0)
+				pg->nodes[i][j].tmp[8] = pg->nodes[i][j].particleDistribution[6];
+			else
+				pg->nodes[i][j].tmp[8] = pg->nodes[i - 1][j - 1].particleDistribution[8];
+			if (i == pg->height - 1 || j == pg->width - 1)
+				pg->nodes[i][j].tmp[6] = pg->nodes[i][j].particleDistribution[8];
+			else
+				pg->nodes[i][j].tmp[6] = pg->nodes[i + 1][j + 1].particleDistribution[6];
+			if (i == 0 || j == pg->width - 1)
+				pg->nodes[i][j].tmp[7] = pg->nodes[i][j].particleDistribution[7];
+			else
+				pg->nodes[i][j].tmp[7] = pg->nodes[i - 1][j + 1].particleDistribution[7];
+			if (i == pg->height - 1 || j == 0)
+				pg->nodes[i][j].tmp[5] = pg->nodes[i][j].particleDistribution[7];
+			else
+				pg->nodes[i][j].tmp[5] = pg->nodes[i + 1][j - 1].particleDistribution[5];
+		}
 }
 
 /**
- * @param tempDistribution значение распределения в точке, полученное во время шага Streaming
- * @param equilibriumDistribution равновесное распределение на основе
- * @param relaxationTime время релаксации газа
- * @param result новое распределение частиц
+ * @param tempDistribution Г§Г­Г Г·ГҐГ­ГЁГҐ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГї Гў ГІГ®Г·ГЄГҐ, ГЇГ®Г«ГіГ·ГҐГ­Г­Г®ГҐ ГўГ® ГўГ°ГҐГ¬Гї ГёГ ГЈГ  Streaming
+ * @param equilibriumDistribution Г°Г ГўГ­Г®ГўГҐГ±Г­Г®ГҐ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г­Г  Г®Г±Г­Г®ГўГҐ
+ * @param relaxationTime ГўГ°ГҐГ¬Гї Г°ГҐГ«Г ГЄГ±Г Г¶ГЁГЁ ГЈГ Г§Г 
+ * @param result Г­Г®ГўГ®ГҐ Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГҐ Г·Г Г±ГІГЁГ¶
  */
 void updateDistribution(double *tempDistribution,
                         double *equilibriumDistribution,
@@ -214,23 +238,7 @@ void updateDistribution(double *tempDistribution,
 }
 
 void Collide(Grid *pg) {
-    //обработка столкновений
-    for (int row = 0; row < pg->height; ++row) {
-        for (int column = 0; column < pg->width; ++column) {
-            GridNode *currentNode = &pg->nodes[row][column];
-            // плотность.
-            currentNode->macroscopicDensity = calculateDensity(currentNode->tmp);
-            // скорость в точке
-            calculateVelocity(currentNode->tmp, currentNode->macroscopicDensity, pg->latticeSpeed,
-                              currentNode->macroscopicVelocity);
-            double equilibriumDistribution[LATTICE_DIRECTIONS];
-            calculateEquilibriumDistribution(pg->latticeSpeed, currentNode->macroscopicDensity,
-                                             currentNode->macroscopicVelocity, equilibriumDistribution);
-            // новое распределение
-            updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
-                               currentNode->particleDistribution);
-        }
-    }
+    //Г®ГЎГ°Г ГЎГ®ГІГЄГ  Г±ГІГ®Г«ГЄГ­Г®ГўГҐГ­ГЁГ©
 }
 
 Snapshot **getSnapshot(Grid *pg) {
@@ -250,7 +258,7 @@ Snapshot **getSnapshot(Grid *pg) {
 }
 
 void SaveSnapshots() {
-    //сохранение снимков
+    //Г±Г®ГµГ°Г Г­ГҐГ­ГЁГҐ Г±Г­ГЁГ¬ГЄГ®Гў
 }
 
 int main(int argc, char *argv[]) {
@@ -270,7 +278,7 @@ int main(int argc, char *argv[]) {
         if (i % snapshotRate == 0) {
             Snapshot **snapshot = getSnapshot(&grid);
 
-            //TODO отправить и очистить память для снепшота.
+            //TODO Г®ГІГЇГ°Г ГўГЁГІГј ГЁ Г®Г·ГЁГ±ГІГЁГІГј ГЇГ Г¬ГїГІГј Г¤Г«Гї Г±Г­ГҐГЇГёГ®ГІГ .
         }
     }
     SaveSnapshots();
