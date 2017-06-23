@@ -178,48 +178,50 @@ void VerStreaming(Grid *pg) {
 
 void Streaming(Grid *pg) {
     //обработка распространения
-    for (int i = 0; i < pg->height; i++) {
-        for (int j = 0; j < pg->width; j++) {
-            pg->nodes[i][j].tmp[0] = pg->nodes[i][j].particleDistribution[0];
-            if (i == 0) {
-                pg->nodes[i][j].tmp[4] = pg->nodes[i][j].particleDistribution[2];
+    for (int row = 0; row < pg->height; row++) {
+        for (int column = 0; column < pg->width; column++) {
+            GridNode *currentNode = &pg->nodes[row][column];
+            double *tmp = currentNode->tmp;
+            tmp[0] = currentNode->particleDistribution[0];
+            if (row == 0) {
+                tmp[4] = currentNode->particleDistribution[2];
             } else {
-                pg->nodes[i][j].tmp[4] = pg->nodes[i - 1][j].particleDistribution[4];
+                tmp[4] = pg->nodes[row - 1][column].particleDistribution[4];
             }
-            if (j == 0) {
-                pg->nodes[i][j].tmp[1] = pg->nodes[i][j].particleDistribution[3];
+            if (column == 0) {
+                tmp[1] = currentNode->particleDistribution[3];
             } else {
-                pg->nodes[i][j].tmp[1] = pg->nodes[i][j - 1].particleDistribution[1];
+                tmp[1] = pg->nodes[row][column - 1].particleDistribution[1];
             }
-            if (i == pg->height - 1) {
-                pg->nodes[i][j].tmp[2] = pg->nodes[i][j].particleDistribution[4];
+            if (row == pg->height - 1) {
+                tmp[2] = currentNode->particleDistribution[4];
             } else {
-                pg->nodes[i][j].tmp[2] = pg->nodes[i + 1][j].particleDistribution[2];
+                tmp[2] = pg->nodes[row + 1][column].particleDistribution[2];
             }
-            if (j == pg->width - 1) {
-                pg->nodes[i][j].tmp[3] = pg->nodes[i][j].particleDistribution[1];
+            if (column == pg->width - 1) {
+                tmp[3] = currentNode->particleDistribution[1];
             } else {
-                pg->nodes[i][j].tmp[3] = pg->nodes[i][j + 1].particleDistribution[3];
+                tmp[3] = pg->nodes[row][column + 1].particleDistribution[3];
             }
-            if (i == 0 || j == 0) {
-                pg->nodes[i][j].tmp[8] = pg->nodes[i][j].particleDistribution[6];
+            if (row == 0 || column == 0) {
+                tmp[8] = currentNode->particleDistribution[6];
             } else {
-                pg->nodes[i][j].tmp[8] = pg->nodes[i - 1][j - 1].particleDistribution[8];
+                tmp[8] = pg->nodes[row - 1][column - 1].particleDistribution[8];
             }
-            if (i == pg->height - 1 || j == pg->width - 1) {
-                pg->nodes[i][j].tmp[6] = pg->nodes[i][j].particleDistribution[8];
+            if (row == pg->height - 1 || column == pg->width - 1) {
+                tmp[6] = currentNode->particleDistribution[8];
             } else {
-                pg->nodes[i][j].tmp[6] = pg->nodes[i + 1][j + 1].particleDistribution[6];
+                tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
             }
-            if (i == 0 || j == pg->width - 1) {
-                pg->nodes[i][j].tmp[7] = pg->nodes[i][j].particleDistribution[7];
+            if (row == 0 || column == pg->width - 1) {
+                tmp[7] = currentNode->particleDistribution[7];
             } else {
-                pg->nodes[i][j].tmp[7] = pg->nodes[i - 1][j + 1].particleDistribution[7];
+                tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
             }
-            if (i == pg->height - 1 || j == 0) {
-                pg->nodes[i][j].tmp[5] = pg->nodes[i][j].particleDistribution[7];
+            if (row == pg->height - 1 || column == 0) {
+                tmp[5] = currentNode->particleDistribution[7];
             } else {
-                pg->nodes[i][j].tmp[5] = pg->nodes[i + 1][j - 1].particleDistribution[5];
+                tmp[5] = pg->nodes[row + 1][column - 1].particleDistribution[5];
             }
         }
     }
