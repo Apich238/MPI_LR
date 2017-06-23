@@ -29,29 +29,31 @@ void FreeGrid(Grid *pg) {
 }
 
 void Streaming(Grid *pg) {
-    //обработка распространения
-	//f1 f3 горизонтально
+	//обработка распространения
+	//f0 никуда не двигается
+	//f1 вправо,f3 влево
 	for (int i = 0; i < pg->height; i++) {
 		double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
-		for (int j = pg->width - 2; j >= 0; j++) {
+		for (int j = pg->width - 2; j >= 0; j--)
 			pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
-		}
 		pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
 		for (int j = 0; j < pg->width - 2; j++)
 			pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
 		pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
 	}
-	//f2 f4 горизонтально
-	for (int i = 0; i < pg->width; i++) {
-		double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
-		for (int j = pg->width - 2; j >= 0; j++) {
-			pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
-		}
-		pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
-		for (int j = 0; j < pg->width - 2; j++)
-			pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
-		pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
+	//f2 вверх, f4 вниз
+	for (int j = 0; j < pg->width; j++) {
+		double f = pg->nodes[pg->height-1][j].particleDistribution[4];
+		for (int i = pg->height - 2; i >= 0; i--)
+			pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
+		pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
+		for (int i = 0; i < pg->height - 2; i++)
+			pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
+		pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
 	}
+	//f6 влево вверх, f8 вправо вниз
+
+	//f5 вправо вверх, f7 влево вниз
 
 }
 
