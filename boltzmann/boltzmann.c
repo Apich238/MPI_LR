@@ -9,6 +9,16 @@ double weights[] = {4.0 / 9,
                     1.0 / 9, 1.0 / 9, 1.0 / 9, 1.0 / 9,
                     1.0 / 36, 1.0 / 36, 1.0 / 36, 1.0 / 36};
 
+const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
+                                                        {1,  0},
+                                                        {0,  1},
+                                                        {-1, 0},
+                                                        {0,  -1},
+                                                        {1,  1},
+                                                        {-1, 1},
+                                                        {-1, -1},
+                                                        {1,  -1}};
+
 typedef struct {
     double macroscopicDensity;        //макроскопическая плотность
     double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
@@ -24,10 +34,41 @@ typedef struct {
 
 double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
+void sumVector(double *first, double *second, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = first[0] + second[0];
+    }
+}
+
+void multiplyVector(double *vector, double multiplier, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = vector[i] * multiplier;
+    }
+}
+
+void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result) {
+    double temp[2];
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = 0;
+    }
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        multiplyVector((double *) elementalVectors[direction], particleDistribution[direction], temp);
+        multiplyVector((double *) temp, latticeSpeed, temp);
+        sumVector(result, temp, result);
+    }
+
+    multiplyVector(result, 1. / macroscopicDensity, result);
+}
+
 void InitGrid(Grid *pg, int gridSize) {
     //инициализация решётки
     pg->height = pg->width = gridSize;
     pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
+    pg->latticeSpeed = 1;
     int row;
     for (row = 0; row < pg->height; ++row) {
         pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
@@ -38,11 +79,12 @@ void InitGrid(Grid *pg, int gridSize) {
             double *probabilitiesOfStreaming = currentNode->particleDistribution;
             double density = 0;
             for (particleDirection = 0; particleDirection < LATTICE_DIRECTIONS; ++particleDirection) {
-                probabilitiesOfStreaming[particleDirection + 1] = generateNormalizedRandom();
+                probabilitiesOfStreaming[particleDirection] = generateNormalizedRandom();
                 density += probabilitiesOfStreaming[particleDirection];
             }
             currentNode->macroscopicDensity = density;
-
+            calculateVelocity(probabilitiesOfStreaming, currentNode->macroscopicDensity, pg->latticeSpeed,
+                              currentNode->macroscopicVelocity);
         }
     }
 }
