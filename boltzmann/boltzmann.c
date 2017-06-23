@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <math.h>
+#include <memory.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -21,10 +22,15 @@ const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
                                                         {1,  -1}};
 
 typedef struct {
-    double macroscopicDensity;        //макроскопическая плотность
-    double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
-    double particleDistribution[LATTICE_DIRECTIONS];        //распределения частиц по направлениям
-    double tmp[LATTICE_DIRECTIONS];
+	double Dencity;//макроскопическая плотность
+	double Velocity[2];    //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
+} MacroNode;
+
+typedef struct {
+	MacroNode macroParameters;
+    double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
+    double particleDistribution[LATTICE_DIRECTIONS];		//распределения частиц по направлениям
+	double tmp[LATTICE_DIRECTIONS];
 } GridNode;
 
 typedef struct {
@@ -32,11 +38,6 @@ typedef struct {
     double relaxationTime, latticeSpeed;        //время релаксации и скорость сетки
     GridNode **nodes;
 } Grid;
-
-typedef struct {
-    double macroscopicDensity;
-    double macroscopicVelocity[2];
-} Snapshot;
 
 void sumVector(double *first, double *second, double *result);
 
@@ -176,25 +177,43 @@ void VerStreaming(Grid *pg) {
 }
 
 void Streaming(Grid *pg) {
-    //обработка распространения
-    //f0 никуда не двигается
-    VerStreaming(pg);
-    //f2 вверх, f4 вниз
-    for (int j = 0; j < pg->width; j++) {
-        double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
-        for (int i = pg->height - 2; i >= 0; i--) {
-            pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
-        }
-        pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
-        for (int i = 0; i < pg->height - 2; i++) {
-            pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
-        }
-        pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
-    }
-    //f6 влево вверх, f8 вправо вниз
-
-    //f5 вправо вверх, f7 влево вниз
-
+	//обработка распространения
+	for (int i = 0; i < pg->height; i++)
+		for (int j = 0; j < pg->width; j++) {
+			pg->nodes[i][j].tmp[0] = pg->nodes[i][j].particleDistribution[0];
+			if (i == 0)
+				pg->nodes[i][j].tmp[4] = pg->nodes[i][j].particleDistribution[2];
+			else
+				pg->nodes[i][j].tmp[4] = pg->nodes[i - 1][j].particleDistribution[4];
+			if (j == 0)
+				pg->nodes[i][j].tmp[1] = pg->nodes[i][j].particleDistribution[3];
+			else
+				pg->nodes[i][j].tmp[1] = pg->nodes[i][j - 1].particleDistribution[1];
+			if (i == pg->height - 1)
+				pg->nodes[i][j].tmp[2] = pg->nodes[i][j].particleDistribution[4];
+			else
+				pg->nodes[i][j].tmp[2] = pg->nodes[i + 1][j].particleDistribution[2];
+			if (j == pg->width - 1)
+				pg->nodes[i][j].tmp[3] = pg->nodes[i][j].particleDistribution[1];
+			else
+				pg->nodes[i][j].tmp[3] = pg->nodes[i][j + 1].particleDistribution[3];
+			if (i == 0 || j == 0)
+				pg->nodes[i][j].tmp[8] = pg->nodes[i][j].particleDistribution[6];
+			else
+				pg->nodes[i][j].tmp[8] = pg->nodes[i - 1][j - 1].particleDistribution[8];
+			if (i == pg->height - 1 || j == pg->width - 1)
+				pg->nodes[i][j].tmp[6] = pg->nodes[i][j].particleDistribution[8];
+			else
+				pg->nodes[i][j].tmp[6] = pg->nodes[i + 1][j + 1].particleDistribution[6];
+			if (i == 0 || j == pg->width - 1)
+				pg->nodes[i][j].tmp[7] = pg->nodes[i][j].particleDistribution[7];
+			else
+				pg->nodes[i][j].tmp[7] = pg->nodes[i - 1][j + 1].particleDistribution[7];
+			if (i == pg->height - 1 || j == 0)
+				pg->nodes[i][j].tmp[5] = pg->nodes[i][j].particleDistribution[7];
+			else
+				pg->nodes[i][j].tmp[5] = pg->nodes[i + 1][j - 1].particleDistribution[5];
+		}
 }
 
 /**
@@ -219,13 +238,13 @@ void Collide(Grid *pg) {
         for (int column = 0; column < pg->width; ++column) {
             GridNode *currentNode = &pg->nodes[row][column];
             // плотность.
-            currentNode->macroscopicDensity = calculateDensity(currentNode->tmp);
+            currentNode->macroParameters.Dencity = calculateDensity(currentNode->tmp);
             // скорость в точке
-            calculateVelocity(currentNode->tmp, currentNode->macroscopicDensity, pg->latticeSpeed,
-                              currentNode->macroscopicVelocity);
+            calculateVelocity(currentNode->tmp, currentNode->macroParameters.Dencity, pg->latticeSpeed,
+                              currentNode->macroParameters.Velocity);
             double equilibriumDistribution[LATTICE_DIRECTIONS];
-            calculateEquilibriumDistribution(pg->latticeSpeed, currentNode->macroscopicDensity,
-                                             currentNode->macroscopicVelocity, equilibriumDistribution);
+            calculateEquilibriumDistribution(pg->latticeSpeed, currentNode->macroParameters.Dencity,
+                                             currentNode->macroParameters.Velocity, equilibriumDistribution);
             // новое распределение
             updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
                                currentNode->particleDistribution);
@@ -233,18 +252,15 @@ void Collide(Grid *pg) {
     }
 }
 
-Snapshot **getSnapshot(Grid *pg) {
-    Snapshot **snapshot = calloc((size_t) pg->height, sizeof(Snapshot));
+MacroNode **getSnapshot(Grid *pg) {
+    MacroNode **snapshot = calloc((size_t) pg->height, sizeof(MacroNode));
     for (int row = 0; row < pg->height; ++row) {
-        snapshot[row] = calloc((size_t) pg->width, sizeof(Snapshot));
+        snapshot[row] = calloc((size_t) pg->width, sizeof(MacroNode));
         for (int column = 0; column < pg->width; ++column) {
-            Snapshot *currentSnapshot = &snapshot[row][column];
+            MacroNode *currentSnapshot = &snapshot[row][column];
             GridNode *currentNode = &pg->nodes[row][column];
-            currentSnapshot->macroscopicDensity = currentNode->macroscopicDensity;
-            currentSnapshot->macroscopicVelocity[0] = currentNode->macroscopicVelocity[0];
-            currentSnapshot->macroscopicVelocity[1] = currentNode->macroscopicVelocity[1];
+            memcpy(currentSnapshot,&currentNode->macroParameters, sizeof(MacroNode));
         }
-
     }
     return snapshot;
 }
@@ -268,7 +284,7 @@ int main(int argc, char *argv[]) {
         Streaming(&grid);
         Collide(&grid);
         if (i % snapshotRate == 0) {
-            Snapshot **snapshot = getSnapshot(&grid);
+            MacroNode **snapshot = getSnapshot(&grid);
 
             //TODO отправить и очистить память для снепшота.
         }
