@@ -71,7 +71,8 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
  */
 double calculateDensity(double *particleDistribution) {
     double density = 0;
-    for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
         density += particleDistribution[direction];
     }
     return density;
@@ -210,7 +211,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
-    int speed = 1;
+    double speed = 0.5;
     InitGrid(&grid, size, speed);
     int totaltime = 10000;
     int snapshoprate = 1000;
