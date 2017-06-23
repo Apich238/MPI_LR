@@ -139,13 +139,14 @@ void generateTwisterData(double *centerOfGrid, int row, int column, double *resu
     }
 }
 
-void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
+void InitGrid(Grid *pg, int gridSize, double latticeSpeed, double relaxationTime) {
     double centerOfGrid = (gridSize - 1.) / 2;
     double center[2] = {centerOfGrid, centerOfGrid};
     //инициализация решётки
     pg->height = pg->width = gridSize;
     pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
     pg->latticeSpeed = latticeSpeed;
+    pg->relaxationTime = relaxationTime;
     int row;
     for (row = 0; row < pg->height; ++row) {
         pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
@@ -272,7 +273,8 @@ int main(int argc, char *argv[]) {
     Grid grid;
     int size = 10;
     double speed = 0.5;
-    InitGrid(&grid, size, speed);
+    double relaxationTime = 1.;
+    InitGrid(&grid, size, speed, relaxationTime);
     int totalTime = 10000;
     int snapshotRate = 1000;
     int i;
