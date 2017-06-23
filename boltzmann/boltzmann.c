@@ -47,6 +47,12 @@ void multiplyVector(double *vector, double multiplier, double *result) {
     }
 }
 
+/**
+ * @param particleDistribution распределение частиц по направлениям
+ * @param macroscopicDensity микроскопическая плотность в точке
+ * @param latticeSpeed скорость сетки
+ * @param result микроскопическая скорость в точке
+ */
 void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result) {
     double temp[2];
     int i;
@@ -63,6 +69,10 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
     multiplyVector(result, 1. / macroscopicDensity, result);
 }
 
+/**
+ * @param particleDistribution распределение частиц по направлениям
+ * @return микроскопическая плотность в точке
+ */
 double calculateDensity(double *particleDistribution) {
     double density = 0;
     for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
@@ -82,6 +92,32 @@ double scalarMultiplication(double *first, double *second) {
         result += first[i] * second[i];
     }
     return result;
+}
+
+/**
+ * @param direction направление
+ * @param latticeSpeed скорость сетки
+ * @param velocity микроскопическая скорость
+ * @return Коэффициент для вычисления равновесного распределения по направлениям
+ */
+double s(int direction, double latticeSpeed, double *velocity) {
+    double scalar = scalarMultiplication((double *) elementalVectors[direction], velocity);
+    return weights[direction] * 3 *
+           (scalar + (3 * pow(scalar, 2) - scalarMultiplication(velocity, velocity)) / (latticeSpeed * 2)) /
+           latticeSpeed;
+}
+
+/**
+ * @param latticeSpeed скорость сетки
+ * @param density микроскопическая плотность
+ * @param velocity микроскопическая скорость
+ * @param result равновесное распределение по направлениям (OUT)
+ */
+void equilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
+    }
 }
 
 double cosBetweenVectors(double *first, double *second) {
