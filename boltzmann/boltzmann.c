@@ -1,4 +1,7 @@
 #include <mpi.h>
+#include <stdlib.h>
+
+#define LATTICE_DIRECTIONS 9
 
 int rank, size;
 
@@ -9,8 +12,8 @@ double weights[] = {4.0 / 9,
 typedef struct {
     double macroscopicDensity;        //макроскопическая плотность
     double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
-    double equilibriumDistribution[9];        //
-    double particleDistribution[9];
+    double equilibriumDistribution[LATTICE_DIRECTIONS];        //
+    double particleDistribution[LATTICE_DIRECTIONS];
 } GridNode;
 
 typedef struct {
@@ -19,9 +22,29 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
+double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
+
 void InitGrid(Grid *pg, int gridSize) {
     //инициализация решётки
     pg->height = pg->width = gridSize;
+    pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
+    int row;
+    for (row = 0; row < pg->height; ++row) {
+        pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
+        int column;
+        for (column = 0; column < pg->width; ++column) {
+            int particleDirection;
+            GridNode *currentNode = &pg->nodes[row][column];
+            double *probabilitiesOfStreaming = currentNode->particleDistribution;
+            double density = 0;
+            for (particleDirection = 0; particleDirection < LATTICE_DIRECTIONS; ++particleDirection) {
+                probabilitiesOfStreaming[particleDirection + 1] = generateNormalizedRandom();
+                density += probabilitiesOfStreaming[particleDirection];
+            }
+            currentNode->macroscopicDensity = density;
+
+        }
+    }
 }
 
 void FreeGrid(Grid *pg) {
@@ -30,8 +53,10 @@ void FreeGrid(Grid *pg) {
 
 void Streaming(Grid *pg) {
     //обработка распространения
-    for (int i = 0; i < pg->height; i++) {
-        for (int j = 0; j < pg->width; j++) {
+    int i;
+    for (i = 0; i < pg->height; i++) {
+        int j;
+        for (j = 0; j < pg->width; j++) {
 
         }
     }
@@ -63,7 +88,8 @@ int main(int argc, char *argv[]) {
     InitGrid(&grid, 10);
     int totaltime = 10000;
     int snapshoprate = 1000;
-    for (int i = 0; i < totaltime; i++) {
+    int i;
+    for (i = 0; i < totaltime; i++) {
         Streaming(&grid);
         CalcMacro(&grid);
         Collide(&grid);
