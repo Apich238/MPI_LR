@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -64,7 +65,43 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
     multiplyVector(result, 1. / macroscopicDensity, result);
 }
 
+double modulusOfVector(double *vector) {
+    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
+}
+
+double scalarMultiplication(double *first, double *second) {
+    double result = 0;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result += first[i] * second[i];
+    }
+    return result;
+}
+
+double cosBetweenVectors(double *first, double *second) {
+    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+}
+
+double projectionOfVector(double *from, double *to) {
+    //Так как здесь в качестве вектора to только элементарные вектора,
+    //можно просто умножить элементарный вектор на проекцию
+    double cos = cosBetweenVectors(from, to);
+    return cos > 0 ? pow(cos,3) : 0;
+}
+
+void generateTwisterData(double *centerOfGrid, int row, int column, double *result) {
+    double perpendicular[2];
+    perpendicular[0] = centerOfGrid[1] - column;
+    perpendicular[1] = row - centerOfGrid[0];
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        result[direction] = projectionOfVector(perpendicular, (double *) elementalVectors[direction]);
+    }
+}
+
 void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
+    double centerOfGrid = (gridSize - 1.) / 2;
+    double center[2] = {centerOfGrid, centerOfGrid};
     //инициализация решётки
     pg->height = pg->width = gridSize;
     pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
@@ -74,17 +111,8 @@ void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
         pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
         int column;
         for (column = 0; column < pg->width; ++column) {
-            int particleDirection;
             GridNode *currentNode = &pg->nodes[row][column];
-            double *probabilitiesOfStreaming = currentNode->particleDistribution;
-            double density = 0;
-            for (particleDirection = 0; particleDirection < LATTICE_DIRECTIONS; ++particleDirection) {
-                probabilitiesOfStreaming[particleDirection] = generateNormalizedRandom();
-                density += probabilitiesOfStreaming[particleDirection];
-            }
-            currentNode->macroscopicDensity = density;
-            calculateVelocity(probabilitiesOfStreaming, currentNode->macroscopicDensity, pg->latticeSpeed,
-                              currentNode->macroscopicVelocity);
+            generateTwisterData(center, row, column, currentNode->particleDistribution);
         }
     }
 }
