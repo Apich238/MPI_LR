@@ -1,7 +1,1 @@
-﻿  channels.c
-c:\users\апарнев а н\documents\dropbox\институт\! параллельное программирование\lr\!lr mpi\channels\channels.c(182): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
-c:\users\апарнев а н\documents\dropbox\институт\! параллельное программирование\lr\!lr mpi\channels\channels.c(174): warning C4101: pend: неиспользованная локальная переменная
-cl : командная строка warning D9028: сбой минимальной повторной сборки, возврат к обычной сборке
-  channels.vcxproj -> C:\Users\Апарнев А Н\Documents\Dropbox\институт\! параллельное программирование\lr\!lr mpi\x64\Debug\channels.exe
-  channels.vcxproj -> C:\Users\Апарнев А Н\Documents\Dropbox\институт\! параллельное программирование\lr\!lr mpi\x64\Debug\channels.pdb (Full PDB)
+﻿  channels.vcxproj -> D:\Dropbox\институт\! параллельное программирование\lr\!lr mpi\x64\Debug\channels.exe

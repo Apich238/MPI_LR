@@ -18,7 +18,7 @@
     <Text Include="plan.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="linal.cpp">
+    <ClCompile Include="linal.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
   </ItemGroup>

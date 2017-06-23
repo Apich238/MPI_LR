@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="boltzmann.cpp">
+    <ClCompile Include="boltzmann.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
   </ItemGroup>
