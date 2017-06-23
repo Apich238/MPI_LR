@@ -33,19 +33,15 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
-void sumVector(double *first, double *second, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = first[0] + second[0];
-    }
-}
+void sumVector(double *first, double *second, double *result);
 
-void multiplyVector(double *vector, double multiplier, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = vector[i] * multiplier;
-    }
-}
+void multiplyVector(double *vector, double multiplier, double *result);
+
+double modulusOfVector(double *vector);
+
+double scalarMultiplication(double *first, double *second);
+
+double cosBetweenVectors(double *first, double *second);
 
 /**
  * @param particleDistribution распределение частиц по направлениям
@@ -81,19 +77,6 @@ double calculateDensity(double *particleDistribution) {
     return density;
 }
 
-double modulusOfVector(double *vector) {
-    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
-}
-
-double scalarMultiplication(double *first, double *second) {
-    double result = 0;
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result += first[i] * second[i];
-    }
-    return result;
-}
-
 /**
  * @param direction направление
  * @param latticeSpeed скорость сетки
@@ -120,10 +103,11 @@ void equilibriumDistribution(double latticeSpeed, double density, double *veloci
     }
 }
 
-double cosBetweenVectors(double *first, double *second) {
-    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
-}
-
+/**
+ * @param from вектор, который проецируется
+ * @param to векток, на который нужно спроецировать
+ * @return позитивный косинус угла между векторами в кубе, или 0
+ */
 double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
@@ -131,6 +115,13 @@ double tangentProjectionCubed(double *from, double *to) {
     return cos > 0 ? pow(cos, 3) : 0;
 }
 
+/**
+ * Генерирует распределение частиц по направлениям в точке для формирования воронки.
+ * @param centerOfGrid центр воронки
+ * @param row строка
+ * @param column столбец
+ * @param result распределение частиц по направлениям в данной точке.
+ */
 void generateTwisterData(double *centerOfGrid, int row, int column, double *result) {
     double perpendicular[2];
     perpendicular[0] = centerOfGrid[1] - column;
@@ -235,4 +226,35 @@ int main(int argc, char *argv[]) {
     SaveSnapshots();
     FreeGrid(&grid);
     MPI_Finalize();
+}
+
+void sumVector(double *first, double *second, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = first[0] + second[0];
+    }
+}
+
+void multiplyVector(double *vector, double multiplier, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = vector[i] * multiplier;
+    }
+}
+
+double modulusOfVector(double *vector) {
+    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
+}
+
+double scalarMultiplication(double *first, double *second) {
+    double result = 0;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result += first[i] * second[i];
+    }
+    return result;
+}
+
+double cosBetweenVectors(double *first, double *second) {
+    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
 }
