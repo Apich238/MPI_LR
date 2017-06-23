@@ -33,8 +33,6 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
-double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
-
 void sumVector(double *first, double *second, double *result) {
     int i;
     for (i = 0; i < 2; ++i) {
@@ -65,6 +63,14 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
     multiplyVector(result, 1. / macroscopicDensity, result);
 }
 
+double calculateDensity(double *particleDistribution) {
+    double density = 0;
+    for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        density += particleDistribution[direction];
+    }
+    return density;
+}
+
 double modulusOfVector(double *vector) {
     return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
 }
@@ -86,7 +92,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos,3) : 0;
+    return cos > 0 ? pow(cos, 3) : 0;
 }
 
 void generateTwisterData(double *centerOfGrid, int row, int column, double *result) {
@@ -122,31 +128,35 @@ void FreeGrid(Grid *pg) {
 }
 
 void Streaming(Grid *pg) {
-	//обработка распространения
-	//f0 никуда не двигается
-	//f1 вправо,f3 влево
-	for (int i = 0; i < pg->height; i++) {
-		double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
-		for (int j = pg->width - 2; j >= 0; j--)
-			pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
-		pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
-		for (int j = 0; j < pg->width - 2; j++)
-			pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
-		pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
-	}
-	//f2 вверх, f4 вниз
-	for (int j = 0; j < pg->width; j++) {
-		double f = pg->nodes[pg->height-1][j].particleDistribution[4];
-		for (int i = pg->height - 2; i >= 0; i--)
-			pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
-		pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
-		for (int i = 0; i < pg->height - 2; i++)
-			pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
-		pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
-	}
-	//f6 влево вверх, f8 вправо вниз
+    //обработка распространения
+    //f0 никуда не двигается
+    //f1 вправо,f3 влево
+    for (int i = 0; i < pg->height; i++) {
+        double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
+        for (int j = pg->width - 2; j >= 0; j--) {
+            pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
+        }
+        pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
+        for (int j = 0; j < pg->width - 2; j++) {
+            pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
+        }
+        pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
+    }
+    //f2 вверх, f4 вниз
+    for (int j = 0; j < pg->width; j++) {
+        double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
+        for (int i = pg->height - 2; i >= 0; i--) {
+            pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
+        }
+        pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
+        for (int i = 0; i < pg->height - 2; i++) {
+            pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
+        }
+        pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
+    }
+    //f6 влево вверх, f8 вправо вниз
 
-	//f5 вправо вверх, f7 влево вниз
+    //f5 вправо вверх, f7 влево вниз
 
 }
 
