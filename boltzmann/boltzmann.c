@@ -23,8 +23,9 @@ const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
 typedef struct {
     double macroscopicDensity;        //макроскопическая плотность
     double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
-    double equilibriumDistribution[LATTICE_DIRECTIONS];        //
-    double particleDistribution[LATTICE_DIRECTIONS];
+    double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
+    double particleDistribution[LATTICE_DIRECTIONS];		//распределения частиц по направлениям
+	double tmp[LATTICE_DIRECTIONS];
 } GridNode;
 
 typedef struct {
@@ -155,9 +156,7 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
-void Streaming(Grid *pg) {
-    //обработка распространения
-    //f0 никуда не двигается
+void VerStreaming(Grid* pg) {
     //f1 вправо,f3 влево
     for (int i = 0; i < pg->height; i++) {
         double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
@@ -170,6 +169,13 @@ void Streaming(Grid *pg) {
         }
         pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
     }
+}
+
+
+void Streaming(Grid *pg) {
+    //обработка распространения
+    //f0 никуда не двигается
+	VerStreaming(pg);
     //f2 вверх, f4 вниз
     for (int j = 0; j < pg->width; j++) {
         double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
