@@ -21,8 +21,12 @@ const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
                                                         {1,  -1}};
 
 typedef struct {
-    double macroscopicDensity;        //макроскопическая плотность
-    double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
+	double Dencity;//макроскопическая плотность
+	double Velocity[2];    //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
+} MacroNode;
+
+typedef struct {
+	MacroNode macroParameters;
     double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
     double particleDistribution[LATTICE_DIRECTIONS];		//распределения частиц по направлениям
 	double tmp[LATTICE_DIRECTIONS];
