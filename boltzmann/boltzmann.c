@@ -161,21 +161,6 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
-void VerStreaming(Grid *pg) {
-    //f1 вправо,f3 влево
-    for (int i = 0; i < pg->height; i++) {
-        double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
-        for (int j = pg->width - 2; j >= 0; j--) {
-            pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
-        }
-        pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
-        for (int j = 0; j < pg->width - 2; j++) {
-            pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
-        }
-        pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
-    }
-}
-
 void Streaming(Grid *pg) {
     //обработка распространения
     for (int row = 0; row < pg->height; row++) {
@@ -214,7 +199,7 @@ void Streaming(Grid *pg) {
                 tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
             }
             if (row == 0 || column == pg->width - 1) {
-                tmp[7] = currentNode->particleDistribution[7];
+                tmp[7] = currentNode->particleDistribution[5];
             } else {
                 tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
             }
