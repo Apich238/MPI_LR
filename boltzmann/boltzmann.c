@@ -10,15 +10,15 @@ double w[] = { 4.0 / 9,
 1.0 / 36 ,1.0 / 36 ,1.0 / 36 ,1.0 / 36 };
 
 typedef struct GridNode {
-	double MDen;
-	double MVel[2];
-	double feq[9];
+	double MDen;		//макроскопическая плотность
+	double MVel[2];		//макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
+	double feq[9];		//
 	double f[9];
 } GridNode;
 
 typedef struct Grid {
-	int H, W;
-	double tau,c;
+	int H, W;			//размеры сетки
+	double tau,c;		//время релаксации и скорость сетки
 	GridNode** nds;
 } Grid;
 
@@ -32,6 +32,9 @@ void FreeGrid(Grid* pg) {
 
 void Streaming(Grid* pg) {
 	//обработка распространения
+	for (int i = 0; i < pg->H; i++) {
+		for(int j=0;j<pg->W)
+	}
 }
 
 void CalcMacro(Grid* pg) {
