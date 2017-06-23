@@ -156,43 +156,42 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
+void VerStreaming(Grid* pg) {
+    //f1 вправо,f3 влево
+    for (int i = 0; i < pg->height; i++) {
+        double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
+        for (int j = pg->width - 2; j >= 0; j--) {
+            pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
+        }
+        pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
+        for (int j = 0; j < pg->width - 2; j++) {
+            pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
+        }
+        pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
+    }
+}
+
+
 void Streaming(Grid *pg) {
-	for (int i = 0; i < pg->height; i++)
-		for (int j = 0; j < pg->width; j++) {
-			pg->nodes[i][j].tmp[0] = pg->nodes[i][j].particleDistribution[0];
-			if (i == 0)
-				pg->nodes[i][j].tmp[4] = pg->nodes[i][j].particleDistribution[2];
-			else
-				pg->nodes[i][j].tmp[4] = pg->nodes[i - 1][j].particleDistribution[4];
-			if (j == 0)
-				pg->nodes[i][j].tmp[1] = pg->nodes[i][j].particleDistribution[3];
-			else
-				pg->nodes[i][j].tmp[1] = pg->nodes[i][j - 1].particleDistribution[1];
-			if (i == pg->height - 1)
-				pg->nodes[i][j].tmp[2] = pg->nodes[i][j].particleDistribution[4];
-			else
-				pg->nodes[i][j].tmp[2] = pg->nodes[i + 1][j].particleDistribution[2];
-			if (j == pg->width - 1)
-				pg->nodes[i][j].tmp[3] = pg->nodes[i][j].particleDistribution[1];
-			else
-				pg->nodes[i][j].tmp[3] = pg->nodes[i][j + 1].particleDistribution[3];
-			if (i == 0 || j == 0)
-				pg->nodes[i][j].tmp[8] = pg->nodes[i][j].particleDistribution[6];
-			else
-				pg->nodes[i][j].tmp[8] = pg->nodes[i - 1][j - 1].particleDistribution[8];
-			if (i == pg->height - 1 || j == pg->width - 1)
-				pg->nodes[i][j].tmp[6] = pg->nodes[i][j].particleDistribution[8];
-			else
-				pg->nodes[i][j].tmp[6] = pg->nodes[i + 1][j + 1].particleDistribution[6];
-			if (i == 0 || j == pg->width - 1)
-				pg->nodes[i][j].tmp[7] = pg->nodes[i][j].particleDistribution[7];
-			else
-				pg->nodes[i][j].tmp[7] = pg->nodes[i - 1][j + 1].particleDistribution[7];
-			if (i == pg->height - 1 || j == 0)
-				pg->nodes[i][j].tmp[5] = pg->nodes[i][j].particleDistribution[7];
-			else
-				pg->nodes[i][j].tmp[5] = pg->nodes[i + 1][j - 1].particleDistribution[5];
-		}
+    //обработка распространения
+    //f0 никуда не двигается
+	VerStreaming(pg);
+    //f2 вверх, f4 вниз
+    for (int j = 0; j < pg->width; j++) {
+        double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
+        for (int i = pg->height - 2; i >= 0; i--) {
+            pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
+        }
+        pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
+        for (int i = 0; i < pg->height - 2; i++) {
+            pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
+        }
+        pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
+    }
+    //f6 влево вверх, f8 вправо вниз
+
+    //f5 вправо вверх, f7 влево вниз
+
 }
 
 void CalcMacro(Grid *pg) {
