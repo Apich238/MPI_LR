@@ -33,22 +33,22 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
-double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
+void sumVector(double *first, double *second, double *result);
 
-void sumVector(double *first, double *second, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = first[0] + second[0];
-    }
-}
+void multiplyVector(double *vector, double multiplier, double *result);
 
-void multiplyVector(double *vector, double multiplier, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = vector[i] * multiplier;
-    }
-}
+double modulusOfVector(double *vector);
 
+double scalarMultiplication(double *first, double *second);
+
+double cosBetweenVectors(double *first, double *second);
+
+/**
+ * @param particleDistribution распределение частиц по направлениям
+ * @param macroscopicDensity микроскопическая плотность в точке
+ * @param latticeSpeed скорость сетки
+ * @param result микроскопическая скорость в точке
+ */
 void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result) {
     double temp[2];
     int i;
@@ -65,30 +65,64 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
     multiplyVector(result, 1. / macroscopicDensity, result);
 }
 
-double modulusOfVector(double *vector) {
-    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
-}
-
-double scalarMultiplication(double *first, double *second) {
-    double result = 0;
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result += first[i] * second[i];
+/**
+ * @param particleDistribution распределение частиц по направлениям
+ * @return микроскопическая плотность в точке
+ */
+double calculateDensity(double *particleDistribution) {
+    double density = 0;
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        density += particleDistribution[direction];
     }
-    return result;
+    return density;
 }
 
-double cosBetweenVectors(double *first, double *second) {
-    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+/**
+ * @param direction направление
+ * @param latticeSpeed скорость сетки
+ * @param velocity микроскопическая скорость
+ * @return Коэффициент для вычисления равновесного распределения по направлениям
+ */
+double s(int direction, double latticeSpeed, double *velocity) {
+    double scalar = scalarMultiplication((double *) elementalVectors[direction], velocity);
+    return weights[direction] * 3 *
+           (scalar + (3 * pow(scalar, 2) - scalarMultiplication(velocity, velocity)) / (latticeSpeed * 2)) /
+           latticeSpeed;
 }
 
+/**
+ * @param latticeSpeed скорость сетки
+ * @param density микроскопическая плотность
+ * @param velocity микроскопическая скорость
+ * @param result равновесное распределение по направлениям (OUT)
+ */
+void equilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
+    int direction;
+    for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
+    }
+}
+
+/**
+ * @param from вектор, который проецируется
+ * @param to векток, на который нужно спроецировать
+ * @return позитивный косинус угла между векторами в кубе, или 0
+ */
 double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos,3) : 0;
+    return cos > 0 ? pow(cos, 3) : 0;
 }
 
+/**
+ * Генерирует распределение частиц по направлениям в точке для формирования воронки.
+ * @param centerOfGrid центр воронки
+ * @param row строка
+ * @param column столбец
+ * @param result распределение частиц по направлениям в данной точке.
+ */
 void generateTwisterData(double *centerOfGrid, int row, int column, double *result) {
     double perpendicular[2];
     perpendicular[0] = centerOfGrid[1] - column;
@@ -122,31 +156,35 @@ void FreeGrid(Grid *pg) {
 }
 
 void Streaming(Grid *pg) {
-	//обработка распространения
-	//f0 никуда не двигается
-	//f1 вправо,f3 влево
-	for (int i = 0; i < pg->height; i++) {
-		double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
-		for (int j = pg->width - 2; j >= 0; j--)
-			pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
-		pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
-		for (int j = 0; j < pg->width - 2; j++)
-			pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
-		pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
-	}
-	//f2 вверх, f4 вниз
-	for (int j = 0; j < pg->width; j++) {
-		double f = pg->nodes[pg->height-1][j].particleDistribution[4];
-		for (int i = pg->height - 2; i >= 0; i--)
-			pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
-		pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
-		for (int i = 0; i < pg->height - 2; i++)
-			pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
-		pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
-	}
-	//f6 влево вверх, f8 вправо вниз
+    //обработка распространения
+    //f0 никуда не двигается
+    //f1 вправо,f3 влево
+    for (int i = 0; i < pg->height; i++) {
+        double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
+        for (int j = pg->width - 2; j >= 0; j--) {
+            pg->nodes[i][j + 1].particleDistribution[1] = pg->nodes[i][j].particleDistribution[1];
+        }
+        pg->nodes[i][0].particleDistribution[1] = pg->nodes[i][0].particleDistribution[3];
+        for (int j = 0; j < pg->width - 2; j++) {
+            pg->nodes[i][j].particleDistribution[3] = pg->nodes[i][j + 1].particleDistribution[3];
+        }
+        pg->nodes[i][pg->width - 1].particleDistribution[3] = f;
+    }
+    //f2 вверх, f4 вниз
+    for (int j = 0; j < pg->width; j++) {
+        double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
+        for (int i = pg->height - 2; i >= 0; i--) {
+            pg->nodes[i + 1][j].particleDistribution[4] = pg->nodes[i][j].particleDistribution[4];
+        }
+        pg->nodes[0][j].particleDistribution[4] = pg->nodes[0][j].particleDistribution[2];
+        for (int i = 0; i < pg->height - 2; i++) {
+            pg->nodes[i][j].particleDistribution[2] = pg->nodes[i + 1][j].particleDistribution[2];
+        }
+        pg->nodes[pg->height - 1][j].particleDistribution[2] = f;
+    }
+    //f6 влево вверх, f8 вправо вниз
 
-	//f5 вправо вверх, f7 влево вниз
+    //f5 вправо вверх, f7 влево вниз
 
 }
 
@@ -173,7 +211,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
-    int speed = 1;
+    double speed = 0.5;
     InitGrid(&grid, size, speed);
     int totaltime = 10000;
     int snapshoprate = 1000;
@@ -189,4 +227,35 @@ int main(int argc, char *argv[]) {
     SaveSnapshots();
     FreeGrid(&grid);
     MPI_Finalize();
+}
+
+void sumVector(double *first, double *second, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = first[0] + second[0];
+    }
+}
+
+void multiplyVector(double *vector, double multiplier, double *result) {
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result[i] = vector[i] * multiplier;
+    }
+}
+
+double modulusOfVector(double *vector) {
+    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
+}
+
+double scalarMultiplication(double *first, double *second) {
+    double result = 0;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        result += first[i] * second[i];
+    }
+    return result;
+}
+
+double cosBetweenVectors(double *first, double *second) {
+    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
 }
