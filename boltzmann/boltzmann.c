@@ -33,6 +33,11 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
+typedef struct {
+    double macroscopicDensity;
+    double macroscopicVelocity[2];
+} Snapshot;
+
 void sumVector(double *first, double *second, double *result);
 
 void multiplyVector(double *vector, double multiplier, double *result);
@@ -192,11 +197,6 @@ void Streaming(Grid *pg) {
 
 }
 
-void CalcMacro(Grid *pg) {
-    //перерасчёт макроскопических плотностей, скоростей, fi eq
-
-}
-
 /**
  * @param tempDistribution значение распределения в точке, полученное во время шага Streaming
  * @param equilibriumDistribution равновесное распределение на основе
@@ -233,8 +233,20 @@ void Collide(Grid *pg) {
     }
 }
 
-void Snapshot(Grid *pg) {
-    //сохранение снимка
+Snapshot **getSnapshot(Grid *pg) {
+    Snapshot **snapshot = calloc((size_t) pg->height, sizeof(Snapshot));
+    for (int row = 0; row < pg->height; ++row) {
+        snapshot[row] = calloc((size_t) pg->width, sizeof(Snapshot));
+        for (int column = 0; column < pg->width; ++column) {
+            Snapshot *currentSnapshot = &snapshot[row][column];
+            GridNode *currentNode = &pg->nodes[row][column];
+            currentSnapshot->macroscopicDensity = currentNode->macroscopicDensity;
+            currentSnapshot->macroscopicVelocity[0] = currentNode->macroscopicVelocity[0];
+            currentSnapshot->macroscopicVelocity[1] = currentNode->macroscopicVelocity[1];
+        }
+
+    }
+    return snapshot;
 }
 
 void SaveSnapshots() {
@@ -249,15 +261,16 @@ int main(int argc, char *argv[]) {
     int size = 10;
     double speed = 0.5;
     InitGrid(&grid, size, speed);
-    int totaltime = 10000;
-    int snapshoprate = 1000;
+    int totalTime = 10000;
+    int snapshotRate = 1000;
     int i;
-    for (i = 0; i < totaltime; i++) {
+    for (i = 0; i < totalTime; i++) {
         Streaming(&grid);
-        CalcMacro(&grid);
         Collide(&grid);
-        if (i % snapshoprate == 0) {
-            Snapshot(&grid);
+        if (i % snapshotRate == 0) {
+            Snapshot **snapshot = getSnapshot(&grid);
+
+            //TODO отправить и очистить память для снепшота.
         }
     }
     SaveSnapshots();
