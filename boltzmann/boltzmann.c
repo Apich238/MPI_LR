@@ -82,7 +82,7 @@ double cosBetweenVectors(double *first, double *second) {
     return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
 }
 
-double projectionOfVector(double *from, double *to) {
+double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
@@ -95,7 +95,7 @@ void generateTwisterData(double *centerOfGrid, int row, int column, double *resu
     perpendicular[1] = row - centerOfGrid[0];
     int direction;
     for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
-        result[direction] = projectionOfVector(perpendicular, (double *) elementalVectors[direction]);
+        result[direction] = tangentProjectionCubed(perpendicular, (double *) elementalVectors[direction]);
     }
 }
 
