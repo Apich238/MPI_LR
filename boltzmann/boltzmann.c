@@ -23,9 +23,8 @@ const double elementalVectors[LATTICE_DIRECTIONS][2] = {{0,  0},
 typedef struct {
     double macroscopicDensity;        //макроскопическая плотность
     double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
-    double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
-    double particleDistribution[LATTICE_DIRECTIONS];		//распределения частиц по направлениям
-	double tmp[LATTICE_DIRECTIONS];
+    double particleDistribution[LATTICE_DIRECTIONS];        //распределения частиц по направлениям
+    double tmp[LATTICE_DIRECTIONS];
 } GridNode;
 
 typedef struct {
@@ -98,7 +97,7 @@ double s(int direction, double latticeSpeed, double *velocity) {
  * @param velocity микроскопическая скорость
  * @param result равновесное распределение по направлениям (OUT)
  */
-void equilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
+void calculateEquilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
     int direction;
     for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
         result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
@@ -156,7 +155,7 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
-void VerStreaming(Grid* pg) {
+void VerStreaming(Grid *pg) {
     //f1 вправо,f3 влево
     for (int i = 0; i < pg->height; i++) {
         double f = pg->nodes[i][pg->width - 1].particleDistribution[1];
@@ -171,11 +170,10 @@ void VerStreaming(Grid* pg) {
     }
 }
 
-
 void Streaming(Grid *pg) {
     //обработка распространения
     //f0 никуда не двигается
-	VerStreaming(pg);
+    VerStreaming(pg);
     //f2 вверх, f4 вниз
     for (int j = 0; j < pg->width; j++) {
         double f = pg->nodes[pg->height - 1][j].particleDistribution[4];
@@ -199,8 +197,40 @@ void CalcMacro(Grid *pg) {
 
 }
 
+/**
+ * @param tempDistribution значение распределения в точке, полученное во время шага Streaming
+ * @param equilibriumDistribution равновесное распределение на основе
+ * @param relaxationTime время релаксации газа
+ * @param result новое распределение частиц
+ */
+void updateDistribution(double *tempDistribution,
+                        double *equilibriumDistribution,
+                        double relaxationTime,
+                        double *result) {
+    for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+        result[direction] = tempDistribution[direction] +
+                            (equilibriumDistribution[direction] - tempDistribution[direction]) / relaxationTime;
+    }
+}
+
 void Collide(Grid *pg) {
     //обработка столкновений
+    for (int row = 0; row < pg->height; ++row) {
+        for (int column = 0; column < pg->width; ++column) {
+            GridNode *currentNode = &pg->nodes[row][column];
+            // плотность.
+            currentNode->macroscopicDensity = calculateDensity(currentNode->tmp);
+            // скорость в точке
+            calculateVelocity(currentNode->tmp, currentNode->macroscopicDensity, pg->latticeSpeed,
+                              currentNode->macroscopicVelocity);
+            double equilibriumDistribution[LATTICE_DIRECTIONS];
+            calculateEquilibriumDistribution(pg->latticeSpeed, currentNode->macroscopicDensity,
+                                             currentNode->macroscopicVelocity, equilibriumDistribution);
+            // новое распределение
+            updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
+                               currentNode->particleDistribution);
+        }
+    }
 }
 
 void Snapshot(Grid *pg) {
