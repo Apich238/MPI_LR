@@ -6,14 +6,14 @@ double weights[] = {4.0 / 9,
                     1.0 / 9, 1.0 / 9, 1.0 / 9, 1.0 / 9,
                     1.0 / 36, 1.0 / 36, 1.0 / 36, 1.0 / 36};
 
-typedef struct GridNode {
+typedef struct {
     double macroscopicDensity;        //макроскопическая плотность
     double macroscopicVelocity[2];        //макроскопическая скорость, 0 - горизонтельно, 1 - вертикально
     double equilibriumDistribution[9];        //
     double particleDistribution[9];
 } GridNode;
 
-typedef struct Grid {
+typedef struct {
     int height, width;            //размеры сетки
     double relaxationTime, latticeSpeed;        //время релаксации и скорость сетки
     GridNode **nodes;
