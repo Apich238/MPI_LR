@@ -64,11 +64,11 @@ void calculateVelocity(double *particleDistribution, double macroscopicDensity, 
     multiplyVector(result, 1. / macroscopicDensity, result);
 }
 
-void InitGrid(Grid *pg, int gridSize) {
+void InitGrid(Grid *pg, int gridSize, double latticeSpeed) {
     //инициализация решётки
     pg->height = pg->width = gridSize;
     pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
-    pg->latticeSpeed = 1;
+    pg->latticeSpeed = latticeSpeed;
     int row;
     for (row = 0; row < pg->height; ++row) {
         pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
@@ -127,7 +127,8 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
-    InitGrid(&grid, 10);
+    int speed = 1;
+    InitGrid(&grid, size, speed);
     int totaltime = 10000;
     int snapshoprate = 1000;
     int i;
