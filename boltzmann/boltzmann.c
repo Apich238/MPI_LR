@@ -351,32 +351,28 @@ void Collide(Grid *pg) {
     }
 }
 
-MacroNode **getSnapshot(Grid *pg) {
-    MacroNode **snapshot = calloc((size_t) pg->height, sizeof(MacroNode));
+void getSnapshot(Grid *pg, MacroNode *snapshot) {
     for (int row = 0; row < pg->height; ++row) {
-        snapshot[row] = calloc((size_t) pg->width, sizeof(MacroNode));
         for (int column = 0; column < pg->width; ++column) {
-            MacroNode *currentSnapshot = &snapshot[row][column];
+            MacroNode *currentSnapshot = &snapshot[row * pg->width + column];
             GridNode *currentNode = &pg->nodes[row][column];
             currentSnapshot->density = calculateDensity(currentNode->particleDistribution);
             calculateVelocity(currentNode->particleDistribution, currentSnapshot->density, pg->latticeSpeed,
                               currentSnapshot->velocity);
         }
     }
-    return snapshot;
 }
 
-void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotIndex) {
+void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
     //сохранение снимков
     char fileName[30];
     sprintf(fileName, "snapshot%d.csv", snapshotIndex);
     FILE *file = fopen(fileName, "w");
     fprintf(file, "x,y,Vx,Vy,p\n");
-    for (int row = 0; row < heignt; ++row) {
+    for (int row = 0; row < width; ++row) {
         for (int column = 0; column < width; ++column) {
-            MacroNode *macro = &snapshots[row][column];
+            MacroNode *macro = &snapshots[row * width + column];
             fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
-//            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
         }
     }
     fclose(file);
@@ -413,23 +409,45 @@ int main(int argc, char *argv[]) {
     double speed = 2;
     double relaxationTime = 1;
     int isMaster = rank == 0;
+
+    //Служебные данные для передачи снепшотов
+    int *snapshotSizes = calloc((size_t) worldSize, sizeof(int));
+    int *snapshotOffsets = calloc((size_t) worldSize, sizeof(int));
+    for (int nonMasterNode = 1; nonMasterNode < worldSize; ++nonMasterNode) {
+        RowBounds bounds = getMyBounds(gridWidth, worldSize - 1, nonMasterNode - 1);
+        snapshotSizes[nonMasterNode] = (bounds.last - bounds.first + 1) * gridWidth * sizeof(MacroNode);
+        snapshotOffsets[nonMasterNode] = bounds.first * sizeof(MacroNode);
+    }
+
     if (!isMaster) {
         RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
         InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
     }
     int totalTime = 100;
     int snapshotRate = 10;
+    MacroNode *snapshot;
+    if (isMaster) {
+        snapshot = calloc((size_t) gridWidth * gridWidth, sizeof(MacroNode));
+    } else {
+        snapshot = calloc((size_t) grid.height * grid.width, sizeof(MacroNode));
+    }
     for (int i = 0; i < totalTime; i++) {
         if (!isMaster) {
             Streaming(&grid, rank, 0);
             Collide(&grid);
         }
         if (i % snapshotRate == 0) {
-            MacroNode **snapshot = getSnapshot(&grid);
-            //TODO отправить и очистить память для снепшота.
-            SaveSnapshots(snapshot, grid.height, grid.width, i / snapshotRate);
+            if (!isMaster) {
+                getSnapshot(&grid, snapshot);
+            }
+            MPI_Gatherv(snapshot, isMaster ? 0 : grid.width * grid.height * sizeof(MacroNode), MPI_BYTE, snapshot,
+                        snapshotSizes, snapshotOffsets, MPI_BYTE, 0, MPI_COMM_WORLD);
+            if (isMaster) {
+                SaveSnapshots(snapshot, gridWidth, i / snapshotRate);
+            }
         }
     }
+    free(snapshot);
     if (!isMaster) {
         FreeGrid(&grid);
     }
