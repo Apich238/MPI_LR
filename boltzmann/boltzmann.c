@@ -411,9 +411,13 @@ int main(int argc, char *argv[]) {
     int isMaster = rank == 0;
 
     //Служебные данные для передачи снепшотов
-    //TODO инициализировать служебные данные для передачи снепшотов
-    int *snapshotSizes;
-    int *snapshotOffsets;
+    int *snapshotSizes = calloc((size_t) worldSize, sizeof(int));
+    int *snapshotOffsets = calloc((size_t) worldSize, sizeof(int));
+    for (int nonMasterNode = 1; nonMasterNode < worldSize; ++nonMasterNode) {
+        RowBounds bounds = getMyBounds(gridWidth, worldSize - 1, nonMasterNode - 1);
+        snapshotSizes[nonMasterNode] = (bounds.last - bounds.first + 1) * gridWidth * sizeof(MacroNode);
+        snapshotOffsets[nonMasterNode] = bounds.first * sizeof(MacroNode);
+    }
 
     if (!isMaster) {
         RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
