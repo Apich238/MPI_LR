@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <memory.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -73,6 +74,9 @@ void testVelocity();
 void boundsComputationTest();
 
 RowBounds getMyBounds(int gridWidth, int worldSize, int rank);
+
+void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
+                          int hasLowerBound, int row, int column);
 
 /**
  * @param particleDistribution распределение частиц по направлени€м
@@ -188,54 +192,127 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решЄтки
 }
 
-void Streaming(Grid *pg) {
+void Streaming(Grid *pg, int rank, int worldSize) {
+
+    int hasUpperBound = rank != 1,
+    hasLowerBound = rank != worldSize - 1;
+    GridNode *upperBound, *lowerBound;
+    size_t rowSize = sizeof(GridNode) * pg->width;
+
+
+    //ќбмен смежными строками сетки
+    if (hasUpperBound) {
+        upperBound = malloc(rowSize);
+        // опируем то, что нужно передать
+        memcpy(upperBound, pg->nodes[0], rowSize);
+    }
+    if (hasLowerBound) {
+        upperBound = malloc(rowSize);
+        // опируем то, что нужно передать
+        memcpy(upperBound, pg->nodes[pg->height - 1], rowSize);
+    }
+    MPI_Status status;
+    for (int i = 0; i < 2; ++i) {
+        if (hasLowerBound && (rank % 2 == i)) {
+            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank, 0, MPI_COMM_WORLD, &status);
+        } else if (hasUpperBound & (rank % 2 != i)) {
+            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank, 0, rank - 1, 0, MPI_COMM_WORLD, &status);
+        }
+    }
+
     //обработка распространени€
     for (int row = 0; row < pg->height; row++) {
         for (int column = 0; column < pg->width; column++) {
-            GridNode *currentNode = &pg->nodes[row][column];
-            double *tmp = currentNode->tmp;
-            tmp[0] = currentNode->particleDistribution[0];
-            if (row == 0) {
-                tmp[4] = currentNode->particleDistribution[2];
-            } else {
-                tmp[4] = pg->nodes[row - 1][column].particleDistribution[4];
-            }
-            if (column == 0) {
-                tmp[1] = currentNode->particleDistribution[3];
-            } else {
-                tmp[1] = pg->nodes[row][column - 1].particleDistribution[1];
-            }
-            if (row == pg->height - 1) {
-                tmp[2] = currentNode->particleDistribution[4];
-            } else {
-                tmp[2] = pg->nodes[row + 1][column].particleDistribution[2];
-            }
-            if (column == pg->width - 1) {
-                tmp[3] = currentNode->particleDistribution[1];
-            } else {
-                tmp[3] = pg->nodes[row][column + 1].particleDistribution[3];
-            }
-            if (row == 0 || column == 0) {
-                tmp[8] = currentNode->particleDistribution[6];
-            } else {
-                tmp[8] = pg->nodes[row - 1][column - 1].particleDistribution[8];
-            }
-            if (row == pg->height - 1 || column == pg->width - 1) {
-                tmp[6] = currentNode->particleDistribution[8];
-            } else {
-                tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
-            }
-            if (row == 0 || column == pg->width - 1) {
-                tmp[7] = currentNode->particleDistribution[5];
-            } else {
-                tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
-            }
-            if (row == pg->height - 1 || column == 0) {
-                tmp[5] = currentNode->particleDistribution[7];
-            } else {
-                tmp[5] = pg->nodes[row + 1][column - 1].particleDistribution[5];
-            }
+            fillTempFieldForNode(pg, upperBound, hasUpperBound, lowerBound, hasLowerBound, row, column);
         }
+    }
+}
+
+/**
+ * «аполн€ет поле tmp в ноде сетки
+ * @param grid сетка
+ * @param upperBound верхн€€ граница
+ * @param hasUpperBound есть ли верхн€€ граница у сетки
+ * @param lowerBound нижн€€ граница
+ * @param hasLowerBound есть ли нижн€€ граница у сетки
+ * @param row строка ноды
+ * @param column столбец ноды
+ */
+void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
+                          int hasLowerBound, int row, int column) {
+    GridNode *currentNode = &grid->nodes[row][column];
+    double *tmp = currentNode->tmp;
+    tmp[0] = currentNode->particleDistribution[0];
+
+    int firstRow = row == 0;
+    int firstColumn = column == 0;
+    int lastRow = row == grid->height - 1;
+    int lastColumn = column == grid->width - 1;
+
+    if (firstRow) {
+        if (hasUpperBound) {
+            tmp[4] = upperBound[column].particleDistribution[4];
+        } else {
+            tmp[4] = currentNode->particleDistribution[2];
+        }
+    } else {
+        tmp[4] = grid->nodes[row - 1][column].particleDistribution[4];
+    }
+    if (firstColumn) {
+        tmp[1] = currentNode->particleDistribution[3];
+    } else {
+        tmp[1] = grid->nodes[row][column - 1].particleDistribution[1];
+    }
+    if (lastRow) {
+        if (hasLowerBound) {
+            tmp[2] = lowerBound[column].particleDistribution[2];
+        } else {
+            tmp[2] = currentNode->particleDistribution[4];
+        }
+    } else {
+        tmp[2] = grid->nodes[row + 1][column].particleDistribution[2];
+    }
+    if (lastColumn) {
+        tmp[3] = currentNode->particleDistribution[1];
+    } else {
+        tmp[3] = grid->nodes[row][column + 1].particleDistribution[3];
+    }
+    if (firstRow || firstColumn) {
+        if (!firstColumn && hasUpperBound) {
+            tmp[8] = upperBound[column - 1].particleDistribution[8];
+
+        } else {
+            tmp[8] = currentNode->particleDistribution[6];
+        }
+    } else {
+        tmp[8] = grid->nodes[row - 1][column - 1].particleDistribution[8];
+    }
+    if (lastRow || lastColumn) {
+        if (!lastColumn && hasLowerBound) {
+            tmp[6] = lowerBound[column + 1].particleDistribution[6];
+        } else {
+            tmp[6] = currentNode->particleDistribution[8];
+        }
+    } else {
+        tmp[6] = grid->nodes[row + 1][column + 1].particleDistribution[6];
+    }
+    if (firstRow || lastColumn) {
+        if (!lastColumn && hasUpperBound) {
+            tmp[7] = upperBound[column + 1].particleDistribution[7];
+        } else {
+            tmp[7] = currentNode->particleDistribution[5];
+        }
+    } else {
+        tmp[7] = grid->nodes[row - 1][column + 1].particleDistribution[7];
+    }
+    if (lastRow || firstColumn) {
+        if (!firstColumn && hasLowerBound) {
+            tmp[5] = lowerBound[column - 1].particleDistribution[5];
+        } else {
+            tmp[5] = currentNode->particleDistribution[7];
+        }
+    } else {
+        tmp[5] = grid->nodes[row + 1][column - 1].particleDistribution[5];
     }
 }
 
@@ -340,7 +417,7 @@ int main(int argc, char *argv[]) {
     int totalTime = 100;
     int snapshotRate = 10;
     for (int i = 0; i < totalTime; i++) {
-        Streaming(&grid);
+        Streaming(&grid, rank, 0);
         Collide(&grid);
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
