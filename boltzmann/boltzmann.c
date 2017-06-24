@@ -49,6 +49,20 @@ double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
 
+void testVectorFunctions();
+
+void testVectorSum();
+
+void testVectorMultiply();
+
+void testVectorModulus();
+
+void testScalarMultiplication();
+
+void testModelFunctions();
+
+void testDensity();
+
 /**
  * @param particleDistribution распределение частиц по направлени€м
  * @param macroscopicDensity микроскопическа€ плотность в точке
@@ -106,9 +120,11 @@ double s(int direction, double latticeSpeed, double *velocity) {
 void calculateEquilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
     int direction;
     for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
-        result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
+        result[direction] = (1 + s(direction, latticeSpeed, velocity)) * density * weights[direction];
     }
 }
+
+double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 /**
  * @param from вектор, который проецируетс€
@@ -119,7 +135,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //“ак как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : 0;
+    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 100;
 }
 
 /**
@@ -267,13 +283,15 @@ void SaveSnapshots() {
 }
 
 int main(int argc, char *argv[]) {
+    testVectorFunctions();
+    testModelFunctions();
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
     double speed = 0.5;
-    double relaxationTime = 1.;
+    double relaxationTime = 5;
     InitGrid(&grid, size, speed, relaxationTime);
     int totalTime = 10000;
     int snapshotRate = 1000;
@@ -292,10 +310,29 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
 }
 
+void testModelFunctions() {
+    testDensity();
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    double velocity[2];
+    calculateVelocity(particleDistribution, density, 0.1, velocity);
+    if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
+        exit(102);
+    }
+}
+
+void testDensity() {
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    if (density != (8 + 0) / 2 * 9) {
+        exit(101);
+    }
+}
+
 void sumVector(double *first, double *second, double *result) {
     int i;
     for (i = 0; i < 2; ++i) {
-        result[i] = first[0] + second[0];
+        result[i] = first[i] + second[i];
     }
 }
 
@@ -321,4 +358,48 @@ double scalarMultiplication(double *first, double *second) {
 
 double cosBetweenVectors(double *first, double *second) {
     return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+}
+
+//-----------“есты-------------------------
+void testScalarMultiplication() {
+    double first[2] = {1, 2};
+    double second[2] = {3, 4};
+    double scalar = scalarMultiplication(first, second);
+    if (scalar != 1 * 3 + 2 * 4) {
+        exit(5);
+    }
+}
+
+void testVectorModulus() {
+    double first[2] = {4, 3};
+    double modulus = modulusOfVector(first);
+    if (modulus != 5.) {
+        exit(4);
+    }
+}
+
+void testVectorMultiply() {
+    double first[2] = {1, 2};
+    double result[2];
+    multiplyVector(first, 2, result);
+    if (result[0] != 2 || result[1] != 4) {
+        exit(3);
+    }
+}
+
+void testVectorSum() {
+    double first[2] = {1, 2};
+    double second[2] = {3, 4};
+    double result[2];
+    sumVector(first, second, result);
+    if (result[0] != 4 || result[1] != 6) {
+        exit(2);
+    }
+}
+
+void testVectorFunctions() {
+    testVectorSum();
+    testVectorMultiply();
+    testVectorModulus();
+    testScalarMultiplication();
 }
