@@ -223,7 +223,7 @@ void Streaming(Grid *pg, int rank, int worldSize) {
             GridNode *currentNode = &pg->nodes[row][column];
             double *tmp = currentNode->tmp;
             tmp[0] = currentNode->particleDistribution[0];
-            //TODO заполнить tmp с учЄтом наличи€ верхней и нижней границ
+
             int firstRow = row == 0;
             int firstColumn = column == 0;
             int lastRow = row == pg->height - 1;
@@ -258,22 +258,39 @@ void Streaming(Grid *pg, int rank, int worldSize) {
                 tmp[3] = pg->nodes[row][column + 1].particleDistribution[3];
             }
             if (firstRow || firstColumn) {
-                tmp[8] = currentNode->particleDistribution[6];
+                if (!firstColumn && hasUpperBound) {
+                    tmp[8] = upperBound[column - 1].particleDistribution[8];
+
+                } else {
+                    tmp[8] = currentNode->particleDistribution[6];
+                }
             } else {
                 tmp[8] = pg->nodes[row - 1][column - 1].particleDistribution[8];
             }
             if (lastRow || lastColumn) {
-                tmp[6] = currentNode->particleDistribution[8];
+                if (!lastColumn && hasLowerBound) {
+                    tmp[6] = lowerBound[column + 1].particleDistribution[6];
+                } else {
+                    tmp[6] = currentNode->particleDistribution[8];
+                }
             } else {
                 tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
             }
             if (firstRow || lastColumn) {
-                tmp[7] = currentNode->particleDistribution[5];
+                if (!lastColumn && hasUpperBound) {
+                    tmp[7] = upperBound[column + 1].particleDistribution[7];
+                } else {
+                    tmp[7] = currentNode->particleDistribution[5];
+                }
             } else {
                 tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
             }
             if (lastRow || firstColumn) {
-                tmp[5] = currentNode->particleDistribution[7];
+                if (!firstColumn && hasLowerBound) {
+                    tmp[5] = lowerBound[column - 1].particleDistribution[5];
+                } else {
+                    tmp[5] = currentNode->particleDistribution[7];
+                }
             } else {
                 tmp[5] = pg->nodes[row + 1][column - 1].particleDistribution[5];
             }
