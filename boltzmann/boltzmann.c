@@ -59,6 +59,10 @@ void testVectorModulus();
 
 void testScalarMultiplication();
 
+void testModelFunctions();
+
+void testDensity();
+
 /**
  * @param particleDistribution распределение частиц по направлениям
  * @param macroscopicDensity микроскопическая плотность в точке
@@ -116,9 +120,11 @@ double s(int direction, double latticeSpeed, double *velocity) {
 void calculateEquilibriumDistribution(double latticeSpeed, double density, double *velocity, double *result) {
     int direction;
     for (direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
-        result[direction] = (weights[direction] + s(direction, latticeSpeed, velocity)) * density;
+        result[direction] = (1 + s(direction, latticeSpeed, velocity)) * density * weights[direction];
     }
 }
+
+double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 /**
  * @param from вектор, который проецируется
@@ -129,7 +135,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : 0;
+    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 100;
 }
 
 /**
@@ -278,13 +284,14 @@ void SaveSnapshots() {
 
 int main(int argc, char *argv[]) {
     testVectorFunctions();
+    testModelFunctions();
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
     double speed = 0.5;
-    double relaxationTime = 1.;
+    double relaxationTime = 5;
     InitGrid(&grid, size, speed, relaxationTime);
     int totalTime = 10000;
     int snapshotRate = 1000;
@@ -301,6 +308,25 @@ int main(int argc, char *argv[]) {
     SaveSnapshots();
     FreeGrid(&grid);
     MPI_Finalize();
+}
+
+void testModelFunctions() {
+    testDensity();
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    double velocity[2];
+    calculateVelocity(particleDistribution, density, 0.1, velocity);
+    if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
+        exit(102);
+    }
+}
+
+void testDensity() {
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    if (density != (8 + 0) / 2 * 9) {
+        exit(101);
+    }
 }
 
 void sumVector(double *first, double *second, double *result) {
