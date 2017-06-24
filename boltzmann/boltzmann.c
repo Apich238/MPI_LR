@@ -230,7 +230,11 @@ void Streaming(Grid *pg, int rank, int worldSize) {
             int lastColumn = column == pg->width - 1;
 
             if (firstRow) {
-                tmp[4] = currentNode->particleDistribution[2];
+                if (hasUpperBound) {
+                    tmp[4] = upperBound[column].particleDistribution[4];
+                } else {
+                    tmp[4] = currentNode->particleDistribution[2];
+                }
             } else {
                 tmp[4] = pg->nodes[row - 1][column].particleDistribution[4];
             }
@@ -240,7 +244,11 @@ void Streaming(Grid *pg, int rank, int worldSize) {
                 tmp[1] = pg->nodes[row][column - 1].particleDistribution[1];
             }
             if (lastRow) {
-                tmp[2] = currentNode->particleDistribution[4];
+                if (hasLowerBound) {
+                    tmp[2] = lowerBound[column].particleDistribution[2];
+                } else {
+                    tmp[2] = currentNode->particleDistribution[4];
+                }
             } else {
                 tmp[2] = pg->nodes[row + 1][column].particleDistribution[2];
             }
