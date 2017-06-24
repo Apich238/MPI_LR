@@ -37,6 +37,11 @@ typedef struct {
     GridNode **nodes;
 } Grid;
 
+typedef struct {
+    int first;
+    int last;
+} RowBounds;
+
 double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 void sumVector(double *first, double *second, double *result);
@@ -62,6 +67,12 @@ void testScalarMultiplication();
 void testModelFunctions();
 
 void testDensity();
+
+void testVelocity();
+
+void boundsComputationTest();
+
+RowBounds getMyBounds(int gridWidth, int worldSize, int rank);
 
 /**
  * @param particleDistribution распределение частиц по направлениям
@@ -293,6 +304,20 @@ void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotInd
     fclose(file);
 }
 
+/**
+ * @param gridWidth ширина квадратной сетки
+ * @param worldSize количество вычислитетей
+ * @param rank номер вычислителя начиная с 0
+ * @return Индексы первой и последней строк в сетке.
+ */
+RowBounds getMyBounds(int gridWidth, int worldSize, int rank) {
+    int remainder = gridWidth % worldSize;
+    RowBounds res;
+    res.first = gridWidth / worldSize * rank + (rank < remainder ? rank : remainder);
+    res.last = gridWidth / worldSize * (rank + 1) - 1 + (rank < remainder ? rank + 1 : remainder);
+    return res;
+}
+
 int main(int argc, char *argv[]) {
     testVectorFunctions();
     testModelFunctions();
@@ -354,6 +379,39 @@ double cosBetweenVectors(double *first, double *second) {
 //-----------Тесты-------------------------
 void testModelFunctions() {
     testDensity();
+    testVelocity();
+    boundsComputationTest();
+}
+
+void boundsComputationTest() {
+    RowBounds firstBounds = getMyBounds(5, 3, 0);
+    if (firstBounds.first != 0 && firstBounds.last != 1) {
+        exit(103);
+    }
+    RowBounds secondBounds = getMyBounds(5, 3, 1);
+    if (secondBounds.first != 2 && secondBounds.last != 3) {
+        exit(104);
+    }
+    RowBounds thirdBounds = getMyBounds(5, 3, 2);
+    if (thirdBounds.first != 4 && thirdBounds.last != 4) {
+        exit(105);
+    }
+
+    firstBounds = getMyBounds(4, 3, 0);
+    if (firstBounds.first != 0 && firstBounds.last != 1) {
+        exit(106);
+    }
+    secondBounds = getMyBounds(4, 3, 1);
+    if (secondBounds.first != 2 && secondBounds.last != 2) {
+        exit(107);
+    }
+    thirdBounds = getMyBounds(4, 3, 2);
+    if (thirdBounds.first != 3 && thirdBounds.last != 3) {
+        exit(108);
+    }
+}
+
+void testVelocity() {
     double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
     double density = calculateDensity(particleDistribution);
     double velocity[2];
