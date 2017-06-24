@@ -412,7 +412,8 @@ int main(int argc, char *argv[]) {
 
     //Служебные данные для передачи снепшотов
     //TODO инициализировать служебные данные для передачи снепшотов
-
+    int *snapshotSizes;
+    int *snapshotOffsets;
 
     if (!isMaster) {
         RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
@@ -435,7 +436,8 @@ int main(int argc, char *argv[]) {
             if (!isMaster) {
                 getSnapshot(&grid, snapshot);
             }
-            //TODO Собрать данные со всех, кроме мастера.
+            MPI_Gatherv(snapshot, isMaster ? 0 : grid.width * grid.height * sizeof(MacroNode), MPI_BYTE, snapshot,
+                        snapshotSizes, snapshotOffsets, MPI_BYTE, 0, MPI_COMM_WORLD);
             if (isMaster) {
                 SaveSnapshots(snapshot, gridWidth, i / snapshotRate);
             }
