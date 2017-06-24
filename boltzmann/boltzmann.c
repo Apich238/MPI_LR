@@ -135,7 +135,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 100;
+    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 20;
 }
 
 /**
@@ -305,8 +305,8 @@ int main(int argc, char *argv[]) {
     double speed = 0.5;
     double relaxationTime = 5;
     InitGrid(&grid, size, speed, relaxationTime);
-    int totalTime = 10000;
-    int snapshotRate = 1000;
+    int totalTime = 100;
+    int snapshotRate = 10;
     int i;
     for (i = 0; i < totalTime; i++) {
         Streaming(&grid);
