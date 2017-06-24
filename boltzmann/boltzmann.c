@@ -49,6 +49,16 @@ double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
 
+void testVectorFunctions();
+
+void testVectorSum();
+
+void testVectorMultiply();
+
+void testVectorModulus();
+
+void testScalarMultiplication();
+
 /**
  * @param particleDistribution распределение частиц по направлениям
  * @param macroscopicDensity микроскопическая плотность в точке
@@ -267,6 +277,7 @@ void SaveSnapshots() {
 }
 
 int main(int argc, char *argv[]) {
+    testVectorFunctions();
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -295,7 +306,7 @@ int main(int argc, char *argv[]) {
 void sumVector(double *first, double *second, double *result) {
     int i;
     for (i = 0; i < 2; ++i) {
-        result[i] = first[0] + second[0];
+        result[i] = first[i] + second[i];
     }
 }
 
@@ -321,4 +332,48 @@ double scalarMultiplication(double *first, double *second) {
 
 double cosBetweenVectors(double *first, double *second) {
     return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+}
+
+//-----------Тесты-------------------------
+void testScalarMultiplication() {
+    double first[2] = {1, 2};
+    double second[2] = {3, 4};
+    double scalar = scalarMultiplication(first, second);
+    if (scalar != 1 * 3 + 2 * 4) {
+        exit(5);
+    }
+}
+
+void testVectorModulus() {
+    double first[2] = {4, 3};
+    double modulus = modulusOfVector(first);
+    if (modulus != 5.) {
+        exit(4);
+    }
+}
+
+void testVectorMultiply() {
+    double first[2] = {1, 2};
+    double result[2];
+    multiplyVector(first, 2, result);
+    if (result[0] != 2 || result[1] != 4) {
+        exit(3);
+    }
+}
+
+void testVectorSum() {
+    double first[2] = {1, 2};
+    double second[2] = {3, 4};
+    double result[2];
+    sumVector(first, second, result);
+    if (result[0] != 4 || result[1] != 6) {
+        exit(2);
+    }
+}
+
+void testVectorFunctions() {
+    testVectorSum();
+    testVectorMultiply();
+    testVectorModulus();
+    testScalarMultiplication();
 }
