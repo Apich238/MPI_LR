@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <memory.h>
+#include <stdio.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -28,7 +29,6 @@ typedef struct {
 
 typedef struct {
     MacroNode macroParameters;
-    double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
     double particleDistribution[LATTICE_DIRECTIONS];        //распределени€ частиц по направлени€м
     double tmp[LATTICE_DIRECTIONS];
 } GridNode;
@@ -38,6 +38,8 @@ typedef struct {
     double relaxationTime, latticeSpeed;        //врем€ релаксации и скорость сетки
     GridNode **nodes;
 } Grid;
+
+double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 void sumVector(double *first, double *second, double *result);
 
@@ -124,8 +126,6 @@ void calculateEquilibriumDistribution(double latticeSpeed, double density, doubl
     }
 }
 
-double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
-
 /**
  * @param from вектор, который проецируетс€
  * @param to векток, на который нужно спроецировать
@@ -135,7 +135,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //“ак как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 100;
+    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 20;
 }
 
 /**
@@ -278,8 +278,20 @@ MacroNode **getSnapshot(Grid *pg) {
     return snapshot;
 }
 
-void SaveSnapshots() {
+void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotIndex) {
     //сохранение снимков
+    char fileName[30];
+    sprintf(fileName, "snapshot%d.csv", snapshotIndex);
+    FILE *file = fopen(fileName, "w");
+    fprintf(file, "x,y,Vx,Vy,p\n");
+    for (int row = 0; row < heignt; ++row) {
+        for (int column = 0; column < width; ++column) {
+            MacroNode *macro = &snapshots[row][column];
+            fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+        }
+    }
+    fclose(file);
 }
 
 int main(int argc, char *argv[]) {
@@ -293,40 +305,20 @@ int main(int argc, char *argv[]) {
     double speed = 0.5;
     double relaxationTime = 5;
     InitGrid(&grid, size, speed, relaxationTime);
-    int totalTime = 10000;
-    int snapshotRate = 1000;
+    int totalTime = 100;
+    int snapshotRate = 10;
     int i;
     for (i = 0; i < totalTime; i++) {
         Streaming(&grid);
         Collide(&grid);
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
-
             //TODO отправить и очистить пам€ть дл€ снепшота.
+            SaveSnapshots(snapshot, size, size, i / snapshotRate);
         }
     }
-    SaveSnapshots();
     FreeGrid(&grid);
     MPI_Finalize();
-}
-
-void testModelFunctions() {
-    testDensity();
-    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    double density = calculateDensity(particleDistribution);
-    double velocity[2];
-    calculateVelocity(particleDistribution, density, 0.1, velocity);
-    if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
-        exit(102);
-    }
-}
-
-void testDensity() {
-    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    double density = calculateDensity(particleDistribution);
-    if (density != (8 + 0) / 2 * 9) {
-        exit(101);
-    }
 }
 
 void sumVector(double *first, double *second, double *result) {
@@ -361,6 +353,25 @@ double cosBetweenVectors(double *first, double *second) {
 }
 
 //-----------“есты-------------------------
+void testModelFunctions() {
+    testDensity();
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    double velocity[2];
+    calculateVelocity(particleDistribution, density, 0.1, velocity);
+    if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
+        exit(102);
+    }
+}
+
+void testDensity() {
+    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    double density = calculateDensity(particleDistribution);
+    if (density != (8 + 0) / 2 * 9) {
+        exit(101);
+    }
+}
+
 void testScalarMultiplication() {
     double first[2] = {1, 2};
     double second[2] = {3, 4};
