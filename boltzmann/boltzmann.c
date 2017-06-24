@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <memory.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -72,7 +73,10 @@ void testVelocity();
 
 void boundsComputationTest();
 
-RowBounds getMyBounds(int gridWidth, int worldSize, int rank);
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
+
+void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
+                          int hasLowerBound, int row, int column);
 
 /**
  * @param particleDistribution распределение частиц по направлениям
@@ -188,54 +192,128 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
-void Streaming(Grid *pg) {
+void Streaming(Grid *pg, int rank, int worldSize) {
+    int hasUpperBound = rank != 1;
+    int hasLowerBound = rank != (worldSize - 1);
+    GridNode *upperBound, *lowerBound;
+    size_t rowSize = sizeof(GridNode) * pg->width;
+
+
+    //Обмен смежными строками сетки
+    if (hasUpperBound) {
+        upperBound = malloc(rowSize);
+        //Копируем то, что нужно передать
+        memcpy(upperBound, pg->nodes[0], rowSize);
+    }
+    if (hasLowerBound) {
+        lowerBound = malloc(rowSize);
+        //Копируем то, что нужно передать
+        memcpy(lowerBound, pg->nodes[pg->height - 1], rowSize);
+    }
+    MPI_Status status;
+    for (int i = 0; i < 2; ++i) {
+        if (hasLowerBound && (rank % 2 == i)) {
+            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank + 1, 0, MPI_COMM_WORLD,
+                                 &status);
+        } else if (hasUpperBound & (rank % 2 != i)) {
+            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank - 1, 0, rank - 1, 0, MPI_COMM_WORLD,
+                                 &status);
+        }
+    }
+
     //обработка распространения
     for (int row = 0; row < pg->height; row++) {
         for (int column = 0; column < pg->width; column++) {
-            GridNode *currentNode = &pg->nodes[row][column];
-            double *tmp = currentNode->tmp;
-            tmp[0] = currentNode->particleDistribution[0];
-            if (row == 0) {
-                tmp[4] = currentNode->particleDistribution[2];
-            } else {
-                tmp[4] = pg->nodes[row - 1][column].particleDistribution[4];
-            }
-            if (column == 0) {
-                tmp[1] = currentNode->particleDistribution[3];
-            } else {
-                tmp[1] = pg->nodes[row][column - 1].particleDistribution[1];
-            }
-            if (row == pg->height - 1) {
-                tmp[2] = currentNode->particleDistribution[4];
-            } else {
-                tmp[2] = pg->nodes[row + 1][column].particleDistribution[2];
-            }
-            if (column == pg->width - 1) {
-                tmp[3] = currentNode->particleDistribution[1];
-            } else {
-                tmp[3] = pg->nodes[row][column + 1].particleDistribution[3];
-            }
-            if (row == 0 || column == 0) {
-                tmp[8] = currentNode->particleDistribution[6];
-            } else {
-                tmp[8] = pg->nodes[row - 1][column - 1].particleDistribution[8];
-            }
-            if (row == pg->height - 1 || column == pg->width - 1) {
-                tmp[6] = currentNode->particleDistribution[8];
-            } else {
-                tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
-            }
-            if (row == 0 || column == pg->width - 1) {
-                tmp[7] = currentNode->particleDistribution[5];
-            } else {
-                tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
-            }
-            if (row == pg->height - 1 || column == 0) {
-                tmp[5] = currentNode->particleDistribution[7];
-            } else {
-                tmp[5] = pg->nodes[row + 1][column - 1].particleDistribution[5];
-            }
+            fillTempFieldForNode(pg, upperBound, hasUpperBound, lowerBound, hasLowerBound, row, column);
         }
+    }
+}
+
+/**
+ * Заполняет поле tmp в ноде сетки
+ * @param grid сетка
+ * @param upperBound верхняя граница
+ * @param hasUpperBound есть ли верхняя граница у сетки
+ * @param lowerBound нижняя граница
+ * @param hasLowerBound есть ли нижняя граница у сетки
+ * @param row строка ноды
+ * @param column столбец ноды
+ */
+void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
+                          int hasLowerBound, int row, int column) {
+    GridNode *currentNode = &grid->nodes[row][column];
+    double *tmp = currentNode->tmp;
+    tmp[0] = currentNode->particleDistribution[0];
+
+    int firstRow = row == 0;
+    int firstColumn = column == 0;
+    int lastRow = row == grid->height - 1;
+    int lastColumn = column == grid->width - 1;
+
+    if (firstRow) {
+        if (hasUpperBound) {
+            tmp[4] = upperBound[column].particleDistribution[4];
+        } else {
+            tmp[4] = currentNode->particleDistribution[2];
+        }
+    } else {
+        tmp[4] = grid->nodes[row - 1][column].particleDistribution[4];
+    }
+    if (firstColumn) {
+        tmp[1] = currentNode->particleDistribution[3];
+    } else {
+        tmp[1] = grid->nodes[row][column - 1].particleDistribution[1];
+    }
+    if (lastRow) {
+        if (hasLowerBound) {
+            tmp[2] = lowerBound[column].particleDistribution[2];
+        } else {
+            tmp[2] = currentNode->particleDistribution[4];
+        }
+    } else {
+        tmp[2] = grid->nodes[row + 1][column].particleDistribution[2];
+    }
+    if (lastColumn) {
+        tmp[3] = currentNode->particleDistribution[1];
+    } else {
+        tmp[3] = grid->nodes[row][column + 1].particleDistribution[3];
+    }
+    if (firstRow || firstColumn) {
+        if (!firstColumn && hasUpperBound) {
+            tmp[8] = upperBound[column - 1].particleDistribution[8];
+
+        } else {
+            tmp[8] = currentNode->particleDistribution[6];
+        }
+    } else {
+        tmp[8] = grid->nodes[row - 1][column - 1].particleDistribution[8];
+    }
+    if (lastRow || lastColumn) {
+        if (!lastColumn && hasLowerBound) {
+            tmp[6] = lowerBound[column + 1].particleDistribution[6];
+        } else {
+            tmp[6] = currentNode->particleDistribution[8];
+        }
+    } else {
+        tmp[6] = grid->nodes[row + 1][column + 1].particleDistribution[6];
+    }
+    if (firstRow || lastColumn) {
+        if (!lastColumn && hasUpperBound) {
+            tmp[7] = upperBound[column + 1].particleDistribution[7];
+        } else {
+            tmp[7] = currentNode->particleDistribution[5];
+        }
+    } else {
+        tmp[7] = grid->nodes[row - 1][column + 1].particleDistribution[7];
+    }
+    if (lastRow || firstColumn) {
+        if (!firstColumn && hasLowerBound) {
+            tmp[5] = lowerBound[column - 1].particleDistribution[5];
+        } else {
+            tmp[5] = currentNode->particleDistribution[7];
+        }
+    } else {
+        tmp[5] = grid->nodes[row + 1][column - 1].particleDistribution[5];
     }
 }
 
@@ -274,32 +352,28 @@ void Collide(Grid *pg) {
     }
 }
 
-MacroNode **getSnapshot(Grid *pg) {
-    MacroNode **snapshot = calloc((size_t) pg->height, sizeof(MacroNode));
+void getSnapshot(Grid *pg, MacroNode *snapshot) {
     for (int row = 0; row < pg->height; ++row) {
-        snapshot[row] = calloc((size_t) pg->width, sizeof(MacroNode));
         for (int column = 0; column < pg->width; ++column) {
-            MacroNode *currentSnapshot = &snapshot[row][column];
+            MacroNode *currentSnapshot = &snapshot[row * pg->width + column];
             GridNode *currentNode = &pg->nodes[row][column];
             currentSnapshot->density = calculateDensity(currentNode->particleDistribution);
             calculateVelocity(currentNode->particleDistribution, currentSnapshot->density, pg->latticeSpeed,
                               currentSnapshot->velocity);
         }
     }
-    return snapshot;
 }
 
-void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotIndex) {
+void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
     //сохранение снимков
     char fileName[30];
     sprintf(fileName, "snapshot%d.csv", snapshotIndex);
     FILE *file = fopen(fileName, "w");
     fprintf(file, "x,y,Vx,Vy,p\n");
-    for (int row = 0; row < heignt; ++row) {
+    for (int row = 0; row < width; ++row) {
         for (int column = 0; column < width; ++column) {
-            MacroNode *macro = &snapshots[row][column];
+            MacroNode *macro = &snapshots[row * width + column];
             fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
-//            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
         }
     }
     fclose(file);
@@ -307,15 +381,15 @@ void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotInd
 
 /**
  * @param gridWidth ширина квадратной сетки
- * @param worldSize количество вычислитетей
- * @param rank номер вычислителя начиная с 0
+ * @param computationalProcessorsCount количество вычислитетей
+ * @param index номер вычислителя начиная с 0
  * @return Индексы первой и последней строк в сетке.
  */
-RowBounds getMyBounds(int gridWidth, int worldSize, int rank) {
-    int remainder = gridWidth % worldSize;
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index) {
+    int remainder = gridWidth % computationalProcessorsCount;
     RowBounds res;
-    res.first = gridWidth / worldSize * rank + (rank < remainder ? rank : remainder);
-    res.last = gridWidth / worldSize * (rank + 1) - 1 + (rank < remainder ? rank + 1 : remainder);
+    res.first = gridWidth / computationalProcessorsCount * index + (index < remainder ? index : remainder);
+    res.last = gridWidth / computationalProcessorsCount * (index + 1) - 1 + (index < remainder ? index + 1 : remainder);
     return res;
 }
 
@@ -331,24 +405,53 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
-//    int gridSize = 10;
-    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize, 100 * 1024 * 1024);
-    RowBounds rowBounds = getMyBounds(gridWidth, worldSize, rank);
+    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
+//    int gridWidth = 10;
     double speed = 2;
     double relaxationTime = 1;
-    InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
+    int isMaster = rank == 0;
+
+    //Служебные данные для передачи снепшотов
+    int *snapshotSizes = calloc((size_t) worldSize, sizeof(int));
+    int *snapshotOffsets = calloc((size_t) worldSize, sizeof(int));
+    for (int nonMasterNode = 1; nonMasterNode < worldSize; ++nonMasterNode) {
+        RowBounds bounds = getMyBounds(gridWidth, worldSize - 1, nonMasterNode - 1);
+        snapshotSizes[nonMasterNode] = (bounds.last - bounds.first + 1) * gridWidth * sizeof(MacroNode);
+        snapshotOffsets[nonMasterNode] = bounds.first * gridWidth * sizeof(MacroNode);
+    }
+
+    if (!isMaster) {
+        RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
+        InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
+    }
     int totalTime = 100;
     int snapshotRate = 10;
+    MacroNode *snapshot;
+    if (isMaster) {
+        snapshot = calloc((size_t) gridWidth * gridWidth, sizeof(MacroNode));
+    } else {
+        snapshot = calloc((size_t) grid.height * grid.width, sizeof(MacroNode));
+    }
     for (int i = 0; i < totalTime; i++) {
-        Streaming(&grid);
-        Collide(&grid);
         if (i % snapshotRate == 0) {
-            MacroNode **snapshot = getSnapshot(&grid);
-            //TODO отправить и очистить память для снепшота.
-            SaveSnapshots(snapshot, grid.height, grid.width, i / snapshotRate);
+            if (!isMaster) {
+                getSnapshot(&grid, snapshot);
+            }
+            MPI_Gatherv(snapshot, isMaster ? 0 : grid.width * grid.height * sizeof(MacroNode), MPI_BYTE, snapshot,
+                        snapshotSizes, snapshotOffsets, MPI_BYTE, 0, MPI_COMM_WORLD);
+            if (isMaster) {
+                SaveSnapshots(snapshot, gridWidth, i / snapshotRate);
+            }
+        }
+        if (!isMaster) {
+            Streaming(&grid, rank, worldSize);
+            Collide(&grid);
         }
     }
-    FreeGrid(&grid);
+    free(snapshot);
+    if (!isMaster) {
+        FreeGrid(&grid);
+    }
     MPI_Finalize();
 }
 
