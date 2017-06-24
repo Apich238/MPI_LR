@@ -1,7 +1,6 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <math.h>
-#include <memory.h>
 #include <stdio.h>
 
 #define LATTICE_DIRECTIONS 9
@@ -28,7 +27,6 @@ typedef struct {
 } MacroNode;
 
 typedef struct {
-    MacroNode macroParameters;
     double particleDistribution[LATTICE_DIRECTIONS];        //распределения частиц по направлениям
     double tmp[LATTICE_DIRECTIONS];
 } GridNode;
@@ -251,13 +249,12 @@ void Collide(Grid *pg) {
         for (int column = 0; column < pg->width; ++column) {
             GridNode *currentNode = &pg->nodes[row][column];
             // плотность.
-            currentNode->macroParameters.density = calculateDensity(currentNode->tmp);
+            double density = calculateDensity(currentNode->tmp);
             // скорость в точке
-            calculateVelocity(currentNode->tmp, currentNode->macroParameters.density, pg->latticeSpeed,
-                              currentNode->macroParameters.velocity);
+            double velocity[2];
+            calculateVelocity(currentNode->tmp, density, pg->latticeSpeed, velocity);
             double equilibriumDistribution[LATTICE_DIRECTIONS];
-            calculateEquilibriumDistribution(pg->latticeSpeed, currentNode->macroParameters.density,
-                                             currentNode->macroParameters.velocity, equilibriumDistribution);
+            calculateEquilibriumDistribution(pg->latticeSpeed, density, velocity, equilibriumDistribution);
             // новое распределение
             updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
                                currentNode->particleDistribution);
@@ -272,7 +269,9 @@ MacroNode **getSnapshot(Grid *pg) {
         for (int column = 0; column < pg->width; ++column) {
             MacroNode *currentSnapshot = &snapshot[row][column];
             GridNode *currentNode = &pg->nodes[row][column];
-            memcpy(currentSnapshot, &currentNode->macroParameters, sizeof(MacroNode));
+            currentSnapshot->density = calculateDensity(currentNode->particleDistribution);
+            calculateVelocity(currentNode->particleDistribution, currentSnapshot->density, pg->latticeSpeed,
+                              currentSnapshot->velocity);
         }
     }
     return snapshot;
@@ -302,8 +301,8 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int size = 10;
-    double speed = 0.5;
-    double relaxationTime = 5;
+    double speed = 2;
+    double relaxationTime = 1;
     InitGrid(&grid, size, speed, relaxationTime);
     int totalTime = 100;
     int snapshotRate = 10;
