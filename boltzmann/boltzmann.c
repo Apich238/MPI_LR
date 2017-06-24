@@ -73,7 +73,7 @@ void testVelocity();
 
 void boundsComputationTest();
 
-RowBounds getMyBounds(int gridWidth, int worldSize, int rank);
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
 
 void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
                           int hasLowerBound, int row, int column);
@@ -384,15 +384,15 @@ void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotInd
 
 /**
  * @param gridWidth ширина квадратной сетки
- * @param worldSize количество вычислитетей
- * @param rank номер вычислителя начиная с 0
+ * @param computationalProcessorsCount количество вычислитетей
+ * @param index номер вычислителя начиная с 0
  * @return Индексы первой и последней строк в сетке.
  */
-RowBounds getMyBounds(int gridWidth, int worldSize, int rank) {
-    int remainder = gridWidth % worldSize;
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index) {
+    int remainder = gridWidth % computationalProcessorsCount;
     RowBounds res;
-    res.first = gridWidth / worldSize * rank + (rank < remainder ? rank : remainder);
-    res.last = gridWidth / worldSize * (rank + 1) - 1 + (rank < remainder ? rank + 1 : remainder);
+    res.first = gridWidth / computationalProcessorsCount * index + (index < remainder ? index : remainder);
+    res.last = gridWidth / computationalProcessorsCount * (index + 1) - 1 + (index < remainder ? index + 1 : remainder);
     return res;
 }
 
@@ -408,24 +408,31 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
+    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
 //    int gridSize = 10;
-    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize, 100 * 1024 * 1024);
-    RowBounds rowBounds = getMyBounds(gridWidth, worldSize, rank);
     double speed = 2;
     double relaxationTime = 1;
-    InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
+    int isMaster = rank == 0;
+    if (!isMaster) {
+        RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
+        InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
+    }
     int totalTime = 100;
     int snapshotRate = 10;
     for (int i = 0; i < totalTime; i++) {
-        Streaming(&grid, rank, 0);
-        Collide(&grid);
+        if (!isMaster) {
+            Streaming(&grid, rank, 0);
+            Collide(&grid);
+        }
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
             //TODO отправить и очистить память для снепшота.
             SaveSnapshots(snapshot, grid.height, grid.width, i / snapshotRate);
         }
     }
-    FreeGrid(&grid);
+    if (!isMaster) {
+        FreeGrid(&grid);
+    }
     MPI_Finalize();
 }
 
