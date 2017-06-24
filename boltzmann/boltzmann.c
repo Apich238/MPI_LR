@@ -224,42 +224,47 @@ void Streaming(Grid *pg, int rank, int worldSize) {
             double *tmp = currentNode->tmp;
             tmp[0] = currentNode->particleDistribution[0];
             //TODO заполнить tmp с учЄтом наличи€ верхней и нижней границ
-            if (row == 0) {
+            int firstRow = row == 0;
+            int firstColumn = column == 0;
+            int lastRow = row == pg->height - 1;
+            int lastColumn = column == pg->width - 1;
+
+            if (firstRow) {
                 tmp[4] = currentNode->particleDistribution[2];
             } else {
                 tmp[4] = pg->nodes[row - 1][column].particleDistribution[4];
             }
-            if (column == 0) {
+            if (firstColumn) {
                 tmp[1] = currentNode->particleDistribution[3];
             } else {
                 tmp[1] = pg->nodes[row][column - 1].particleDistribution[1];
             }
-            if (row == pg->height - 1) {
+            if (lastRow) {
                 tmp[2] = currentNode->particleDistribution[4];
             } else {
                 tmp[2] = pg->nodes[row + 1][column].particleDistribution[2];
             }
-            if (column == pg->width - 1) {
+            if (lastColumn) {
                 tmp[3] = currentNode->particleDistribution[1];
             } else {
                 tmp[3] = pg->nodes[row][column + 1].particleDistribution[3];
             }
-            if (row == 0 || column == 0) {
+            if (firstRow || firstColumn) {
                 tmp[8] = currentNode->particleDistribution[6];
             } else {
                 tmp[8] = pg->nodes[row - 1][column - 1].particleDistribution[8];
             }
-            if (row == pg->height - 1 || column == pg->width - 1) {
+            if (lastRow || lastColumn) {
                 tmp[6] = currentNode->particleDistribution[8];
             } else {
                 tmp[6] = pg->nodes[row + 1][column + 1].particleDistribution[6];
             }
-            if (row == 0 || column == pg->width - 1) {
+            if (firstRow || lastColumn) {
                 tmp[7] = currentNode->particleDistribution[5];
             } else {
                 tmp[7] = pg->nodes[row - 1][column + 1].particleDistribution[7];
             }
-            if (row == pg->height - 1 || column == 0) {
+            if (lastRow || firstColumn) {
                 tmp[5] = currentNode->particleDistribution[7];
             } else {
                 tmp[5] = pg->nodes[row + 1][column - 1].particleDistribution[5];
