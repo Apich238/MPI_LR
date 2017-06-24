@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <memory.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -188,13 +189,41 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 
-void Streaming(Grid *pg) {
+void Streaming(Grid *pg, int rank, int worldSize) {
+
+    int hasUpperBound = rank != 1,
+    hasLowerBound = rank != worldSize - 1;
+    GridNode *upperBound, *lowerBound;
+    size_t rowSize = sizeof(GridNode) * pg->width;
+
+
+    //Обмен смежными строками сетки
+    if (hasUpperBound) {
+        upperBound = malloc(rowSize);
+        //Копируем то, что нужно передать
+        memcpy(upperBound, pg->nodes[0], rowSize);
+    }
+    if (hasLowerBound) {
+        upperBound = malloc(rowSize);
+        //Копируем то, что нужно передать
+        memcpy(upperBound, pg->nodes[pg->height - 1], rowSize);
+    }
+    MPI_Status status;
+    for (int i = 0; i < 2; ++i) {
+        if (hasLowerBound && (rank % 2 == i)) {
+            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank, 0, MPI_COMM_WORLD, &status);
+        } else if (hasUpperBound & (rank % 2 != i)) {
+            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank, 0, rank - 1, 0, MPI_COMM_WORLD, &status);
+        }
+    }
+
     //обработка распространения
     for (int row = 0; row < pg->height; row++) {
         for (int column = 0; column < pg->width; column++) {
             GridNode *currentNode = &pg->nodes[row][column];
             double *tmp = currentNode->tmp;
             tmp[0] = currentNode->particleDistribution[0];
+            //TODO заполнить tmp с учётом наличия верхней и нижней границ
             if (row == 0) {
                 tmp[4] = currentNode->particleDistribution[2];
             } else {
@@ -340,7 +369,7 @@ int main(int argc, char *argv[]) {
     int totalTime = 100;
     int snapshotRate = 10;
     for (int i = 0; i < totalTime; i++) {
-        Streaming(&grid);
+        Streaming(&grid, rank, 0);
         Collide(&grid);
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
