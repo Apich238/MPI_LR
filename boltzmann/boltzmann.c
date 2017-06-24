@@ -5,7 +5,7 @@
 
 #define LATTICE_DIRECTIONS 9
 
-int rank, size;
+int rank, worldSize;
 
 double weights[] = {4.0 / 9,
                     1.0 / 9, 1.0 / 9, 1.0 / 9, 1.0 / 9,
@@ -164,21 +164,22 @@ void generateTwisterData(double *centerOfGrid, int row, int column, double *resu
     }
 }
 
-void InitGrid(Grid *pg, int gridSize, double latticeSpeed, double relaxationTime) {
+void InitGrid(Grid *pg, int gridSize, RowBounds bounds, double latticeSpeed, double relaxationTime) {
     double centerOfGrid = (gridSize - 1.) / 2;
     double center[2] = {centerOfGrid, centerOfGrid};
     //инициализация решётки
-    pg->height = pg->width = gridSize;
-    pg->nodes = calloc((size_t) gridSize, sizeof(GridNode *));
+    pg->width = gridSize;
+    pg->height = bounds.last - bounds.first + 1;
+    pg->nodes = calloc((size_t) pg->height, sizeof(GridNode *));
     pg->latticeSpeed = latticeSpeed;
     pg->relaxationTime = relaxationTime;
     int row;
     for (row = 0; row < pg->height; ++row) {
-        pg->nodes[row] = calloc((size_t) gridSize, sizeof(GridNode));
+        pg->nodes[row] = calloc((size_t) pg->width, sizeof(GridNode));
         int column;
         for (column = 0; column < pg->width; ++column) {
             GridNode *currentNode = &pg->nodes[row][column];
-            generateTwisterData(center, row, column, currentNode->particleDistribution);
+            generateTwisterData(center, bounds.first + row, column, currentNode->particleDistribution);
         }
     }
 }
@@ -298,7 +299,7 @@ void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotInd
         for (int column = 0; column < width; ++column) {
             MacroNode *macro = &snapshots[row][column];
             fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
-            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+//            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
         }
     }
     fclose(file);
@@ -318,27 +319,33 @@ RowBounds getMyBounds(int gridWidth, int worldSize, int rank) {
     return res;
 }
 
+int minimumRowCount(int dataTypeSizeInBytes, int numberOfComputationalNodes, int minimumSizeOfSystemPerNode) {
+    return (int) ceil((sqrt((minimumSizeOfSystemPerNode * numberOfComputationalNodes)
+                            / dataTypeSizeInBytes)));
+}
+
 int main(int argc, char *argv[]) {
     testVectorFunctions();
     testModelFunctions();
     MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
-    int size = 10;
+//    int gridSize = 10;
+    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize, 100 * 1024 * 1024);
+    RowBounds rowBounds = getMyBounds(gridWidth, worldSize, rank);
     double speed = 2;
     double relaxationTime = 1;
-    InitGrid(&grid, size, speed, relaxationTime);
+    InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
     int totalTime = 100;
     int snapshotRate = 10;
-    int i;
-    for (i = 0; i < totalTime; i++) {
+    for (int i = 0; i < totalTime; i++) {
         Streaming(&grid);
         Collide(&grid);
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
             //TODO отправить и очистить память для снепшота.
-            SaveSnapshots(snapshot, size, size, i / snapshotRate);
+            SaveSnapshots(snapshot, grid.height, grid.width, i / snapshotRate);
         }
     }
     FreeGrid(&grid);
