@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <memory.h>
+#include <stdio.h>
 
 #define LATTICE_DIRECTIONS 9
 
@@ -28,7 +29,6 @@ typedef struct {
 
 typedef struct {
     MacroNode macroParameters;
-    double equilibriumDistribution[LATTICE_DIRECTIONS];        //равновесное распределение
     double particleDistribution[LATTICE_DIRECTIONS];        //распределения частиц по направлениям
     double tmp[LATTICE_DIRECTIONS];
 } GridNode;
@@ -38,6 +38,8 @@ typedef struct {
     double relaxationTime, latticeSpeed;        //время релаксации и скорость сетки
     GridNode **nodes;
 } Grid;
+
+double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 void sumVector(double *first, double *second, double *result);
 
@@ -119,7 +121,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //Так как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : 0;
+    return cos > 0 ? pow(cos, 3) / 5 : generateNormalizedRandom() / 100;
 }
 
 /**
@@ -262,9 +264,23 @@ MacroNode **getSnapshot(Grid *pg) {
     return snapshot;
 }
 
-void SaveSnapshots() {
+void SaveSnapshots(MacroNode **snapshots, int heignt, int width, int snapshotIndex) {
     //сохранение снимков
+    char fileName[30];
+    sprintf(fileName, "snapshot%d.csv", snapshotIndex);
+    FILE *file = fopen(fileName, "w");
+    fprintf(file, "x,y,Vx,Vy,p\n");
+    for (int row = 0; row < heignt; ++row) {
+        for (int column = 0; column < width; ++column) {
+            MacroNode *macro = &snapshots[row][column];
+            fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+            printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+        }
+    }
+    fclose(file);
 }
+
+void vectorFuncTests();
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
@@ -283,11 +299,10 @@ int main(int argc, char *argv[]) {
         Collide(&grid);
         if (i % snapshotRate == 0) {
             MacroNode **snapshot = getSnapshot(&grid);
-
             //TODO отправить и очистить память для снепшота.
+            SaveSnapshots(snapshot, size, size, i / snapshotRate);
         }
     }
-    SaveSnapshots();
     FreeGrid(&grid);
     MPI_Finalize();
 }
