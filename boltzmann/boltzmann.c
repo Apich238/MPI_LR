@@ -193,9 +193,8 @@ void FreeGrid(Grid *pg) {
 }
 
 void Streaming(Grid *pg, int rank, int worldSize) {
-
-    int hasUpperBound = rank != 1,
-    hasLowerBound = rank != worldSize - 1;
+    int hasUpperBound = rank != 1;
+    int hasLowerBound = rank != (worldSize - 1);
     GridNode *upperBound, *lowerBound;
     size_t rowSize = sizeof(GridNode) * pg->width;
 
@@ -207,16 +206,18 @@ void Streaming(Grid *pg, int rank, int worldSize) {
         memcpy(upperBound, pg->nodes[0], rowSize);
     }
     if (hasLowerBound) {
-        upperBound = malloc(rowSize);
+        lowerBound = malloc(rowSize);
         //Копируем то, что нужно передать
-        memcpy(upperBound, pg->nodes[pg->height - 1], rowSize);
+        memcpy(lowerBound, pg->nodes[pg->height - 1], rowSize);
     }
     MPI_Status status;
     for (int i = 0; i < 2; ++i) {
         if (hasLowerBound && (rank % 2 == i)) {
-            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank, 0, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank + 1, 0, MPI_COMM_WORLD,
+                                 &status);
         } else if (hasUpperBound & (rank % 2 != i)) {
-            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank, 0, rank - 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank - 1, 0, rank - 1, 0, MPI_COMM_WORLD,
+                                 &status);
         }
     }
 
@@ -405,7 +406,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     Grid grid;
     int gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
-//    int gridSize = 10;
+//    int gridWidth = 10;
     double speed = 2;
     double relaxationTime = 1;
     int isMaster = rank == 0;
@@ -416,7 +417,7 @@ int main(int argc, char *argv[]) {
     for (int nonMasterNode = 1; nonMasterNode < worldSize; ++nonMasterNode) {
         RowBounds bounds = getMyBounds(gridWidth, worldSize - 1, nonMasterNode - 1);
         snapshotSizes[nonMasterNode] = (bounds.last - bounds.first + 1) * gridWidth * sizeof(MacroNode);
-        snapshotOffsets[nonMasterNode] = bounds.first * sizeof(MacroNode);
+        snapshotOffsets[nonMasterNode] = bounds.first * gridWidth * sizeof(MacroNode);
     }
 
     if (!isMaster) {
@@ -432,10 +433,6 @@ int main(int argc, char *argv[]) {
         snapshot = calloc((size_t) grid.height * grid.width, sizeof(MacroNode));
     }
     for (int i = 0; i < totalTime; i++) {
-        if (!isMaster) {
-            Streaming(&grid, rank, 0);
-            Collide(&grid);
-        }
         if (i % snapshotRate == 0) {
             if (!isMaster) {
                 getSnapshot(&grid, snapshot);
@@ -445,6 +442,10 @@ int main(int argc, char *argv[]) {
             if (isMaster) {
                 SaveSnapshots(snapshot, gridWidth, i / snapshotRate);
             }
+        }
+        if (!isMaster) {
+            Streaming(&grid, rank, worldSize);
+            Collide(&grid);
         }
     }
     free(snapshot);
