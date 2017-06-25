@@ -627,6 +627,7 @@ int main(int argc, char *argv[]) {
     } else {
         snapshot = calloc((size_t) grid.height * grid.width, sizeof(MacroNode));
     }
+    double timeBefore = MPI_Wtime();
     for (int i = 0; i < totalTime; i++) {
         if (i % snapshotRate == 0) {
             if (!isMaster) {
@@ -643,6 +644,8 @@ int main(int argc, char *argv[]) {
             Collide(&grid);
         }
     }
+    double timeAfter = MPI_Wtime();
+    printf("Algorithm time is %lf", timeAfter - timeBefore);
     free(snapshot);
     if (!isMaster) {
         FreeGrid(&grid);
