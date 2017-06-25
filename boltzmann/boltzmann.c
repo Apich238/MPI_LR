@@ -43,7 +43,6 @@ typedef struct {
     int last;
 } RowBounds;
 
-double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
 #pragma region vectorF
 void sumVector(double *first, double *second, double *result);
@@ -201,7 +200,7 @@ void testVectorFunctions() {
 }
 
 #pragma endregion
-
+#pragma region bounds
 RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
 /**
 * @param gridWidth ширина квадратной сетки
@@ -221,9 +220,10 @@ int minimumRowCount(int dataTypeSizeInBytes, int numberOfComputationalNodes, int
 	return (int)ceil((sqrt((minimumSizeOfSystemPerNode * numberOfComputationalNodes)
 		/ dataTypeSizeInBytes)));
 }
+#pragma endregion
+#pragma region LBM specific
 void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
                           int hasLowerBound, int row, int column);
-#pragma region LBM specific
 /**
  * @param particleDistribution распределение частиц по направлениям
  * @param macroscopicDensity микроскопическая плотность в точке
@@ -460,6 +460,7 @@ void Collide(Grid *pg) {
 }
 #pragma endregion
 #pragma region Initial data
+double generateNormalizedRandom() { return rand() / (double)RAND_MAX; }
 /**
  * @param from вектор, который проецируется
  * @param to векток, на который нужно спроецировать
@@ -513,7 +514,6 @@ void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
 #pragma endregion
-
 
 #pragma region snapshots
 void getSnapshot(Grid *pg, MacroNode *snapshot) {
