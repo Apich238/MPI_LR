@@ -41,8 +41,24 @@ typedef struct {
     int last;
 } RowBounds;
 
+void testVectorFunctions();
 
-#pragma region vectorF
+void testVectorSum();
+
+void testVectorMultiply();
+
+void testVectorModulus();
+
+void testScalarMultiplication();
+
+void testModelFunctions();
+
+void testDensity();
+
+void testVelocity();
+
+void boundsComputationTest();
+
 void sumVector(double *first, double *second, double *result);
 
 void multiplyVector(double *vector, double multiplier, double *result);
@@ -52,6 +68,15 @@ double modulusOfVector(double *vector);
 double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
+
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
+
+double calculateDensity(double *particleDistribution);
+
+void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result);
+
+#pragma region vectorF
+
 void sumVector(double *first, double *second, double *result) {
 	int i;
 	for (i = 0; i < 2; ++i) {
@@ -84,24 +109,7 @@ double cosBetweenVectors(double *first, double *second) {
 }
 #pragma endregion
 #pragma region tests
-void testVectorFunctions();
 
-void testVectorSum();
-
-void testVectorMultiply();
-
-void testVectorModulus();
-
-void testScalarMultiplication();
-
-void testModelFunctions();
-
-void testDensity();
-
-void testVelocity();
-
-void boundsComputationTest();
-//-----------Тесты-------------------------
 void testModelFunctions() {
 	testDensity();
 	testVelocity();
@@ -199,7 +207,6 @@ void testVectorFunctions() {
 
 #pragma endregion
 #pragma region bounds
-RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
 /**
 * @param gridWidth ширина квадратной сетки
 * @param computationalProcessorsCount количество вычислитетей
@@ -468,11 +475,11 @@ void initSimulationParameters(const int argc, char **argv,
         exit(1);
     }
 
-    if (sscanf(argv[1], "%f", speed) != 1) {
+    if (sscanf(argv[1], "%lf", speed) != 1) {
         fprintf(stderr, "speed is not double");
         exit(1);
     }
-    if (sscanf(argv[2], "%f", relaxationTime) != 1) {
+    if (sscanf(argv[2], "%lf", relaxationTime) != 1) {
         fprintf(stderr, "relaxation time is not double");
         exit(1);
     }
@@ -580,7 +587,6 @@ void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
     fclose(file);
 }
 #pragma endregion
-
 
 int main(int argc, char *argv[]) {
     testVectorFunctions();
