@@ -458,6 +458,45 @@ void Collide(Grid *pg) {
 }
 #pragma endregion
 #pragma region Initial data
+void initSimulationParameters(const int argc, char **argv,
+                              const int worldSize,
+                              double *speed, double *relaxationTime, int *totalTime, int *snapshotRate,
+                              int *gridWidth) {
+    if (argc < 5) {
+        printf(
+        "usage: boltzman <lattice-speed>  <relaxation-time>  <simulation-time>  <snapshot-rate> (optional <grid-width>)\n");
+        exit(1);
+    }
+
+    if (sscanf(argv[1], "%f", speed) != 1) {
+        fprintf(stderr, "speed is not double");
+        exit(1);
+    }
+    if (sscanf(argv[2], "%f", relaxationTime) != 1) {
+        fprintf(stderr, "relaxation time is not double");
+        exit(1);
+    }
+    if (sscanf(argv[3], "%i", totalTime) != 1) {
+        fprintf(stderr, "simulation time is not integer");
+        exit(1);
+    }
+
+    if (sscanf(argv[4], "%i", snapshotRate) != 1) {
+        fprintf(stderr, "snapshot rate is not integer");
+        exit(1);
+    }
+
+    if (argc == 6) {
+        if (sscanf(argv[5], "%i", gridWidth) != 1) {
+            fprintf(stderr, "grid width is not integer");
+            exit(1);
+        }
+    } else {
+        // 100мб на каждый вычислитель
+        *gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
+    }
+}
+
 double generateNormalizedRandom() { return rand() / (double)RAND_MAX; }
 /**
  * @param from вектор, который проецируется
@@ -542,45 +581,6 @@ void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
 }
 #pragma endregion
 
-
-void initSimulationParameters(const int argc, char **argv,
-                              const int worldSize,
-                              double *speed, double *relaxationTime, int *totalTime, int *snapshotRate,
-                              int *gridWidth) {
-    if (argc < 5) {
-        printf(
-        "usage: boltzman <lattice-speed>  <relaxation-time>  <simulation-time>  <snapshot-rate> (optional <grid-width>)\n");
-        exit(1);
-    }
-
-    if (sscanf(argv[1], "%f", speed) != 1) {
-        fprintf(stderr, "speed is not double");
-        exit(1);
-    }
-    if (sscanf(argv[2], "%f", relaxationTime) != 1) {
-        fprintf(stderr, "relaxation time is not double");
-        exit(1);
-    }
-    if (sscanf(argv[3], "%i", totalTime) != 1) {
-        fprintf(stderr, "simulation time is not integer");
-        exit(1);
-    }
-
-    if (sscanf(argv[4], "%i", snapshotRate) != 1) {
-        fprintf(stderr, "snapshot rate is not integer");
-        exit(1);
-    }
-
-    if (argc == 6) {
-        if (sscanf(argv[5], "%i", gridWidth) != 1) {
-            fprintf(stderr, "grid width is not integer");
-            exit(1);
-        }
-    } else {
-        // 100мб на каждый вычислитель
-        *gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
-    }
-}
 
 int main(int argc, char *argv[]) {
     testVectorFunctions();
