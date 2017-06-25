@@ -189,9 +189,9 @@ double calculateDensity(double *f) {
  * @param result равновесное распределение по направлениям (OUT)
  */
 void EquilibriumDistribution(double density, double *velocity, double *result) {
-	double u2 = VecDot(velocity, velocity),
-		a = 3 * density / latticeSpeed,
-		b = a / (2 * latticeSpeed);
+	double u2 = VecDot(velocity, velocity);
+	double	a = 3 * density / latticeSpeed;
+	double	b = a / (2 * latticeSpeed);
 	for (int i = 0; i < LATTICE_DIRECTIONS; ++i) {
 		double eiu = VecDot(e[i], velocity);
 		result[i] = weights[i] * (density + a*eiu + b*(3 * eiu*eiu - u2));
@@ -323,18 +323,6 @@ void Streaming(GridPart *pg) {
 			}
 		}
 	}
-	//if (hasUpperBound) {
-	//	MPI_Sendrecv(
-	//		temptop, sizeof(GridNode)*pg->width, MPI_BYTE, rank - 1, (rank - 1) * 2,
-	//		pg->TopTmp, sizeof(GridNode)*pg->width, MPI_BYTE, rank - 1, (rank) * 2 + 1,
-	//		MPI_COMM_WORLD, &status);
-	//}
-	//if (hasLowerBound) {
-	//	MPI_Sendrecv(
-	//		tempbot, sizeof(GridNode)*pg->width, MPI_BYTE, rank + 1, (rank + 1) * 2 + 1,
-	//		pg->BottomTmp, sizeof(GridNode)*pg->width, MPI_BYTE, rank + 1, (rank) * 2,
-	//		MPI_COMM_WORLD, &status);
-	//}
 	MPI_Request r1, r2;
 	MPI_Status st;
 	if (hasUpperBound) {
@@ -372,8 +360,7 @@ void Streaming(GridPart *pg) {
 * @param result новое распределение частиц
 */
 void updateDistribution(double *tempDistribution,
-	double *equilibriumDistribution,
-	double relaxationTime, double *result) {
+	double *equilibriumDistribution, double *result) {
 	double at = 1 / relaxationTime;
 	for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
 		result[direction] = tempDistribution[direction] +
@@ -393,8 +380,7 @@ void Collide(GridPart *pg) {
 			double equilibriumDistribution[LATTICE_DIRECTIONS];
 			EquilibriumDistribution(m.density, m.velocity, equilibriumDistribution);
 			// новое распределение
-			updateDistribution(currentNode->tmp, equilibriumDistribution, relaxationTime,
-				currentNode->particleDistribution);
+			updateDistribution(currentNode->tmp, equilibriumDistribution, currentNode->particleDistribution);
 		}
 	}
 }
@@ -529,8 +515,8 @@ void MakeSnapshot(GridPart *pg, SnapshotPart *sp) {
 		for (int column = 0; column < pg->width; ++column) {
 			MacroNode *currM = &(sp->nodes[row * pg->width + column]);
 			GridNode *currN = &(pg->nodes[row * pg->width + column]);
-			//currM->density = calculateDensity(currN->particleDistribution);
-			//calculateVelocity(currN->particleDistribution, currM->density, currM->velocity);
+			currM->density = calculateDensity(currN->particleDistribution);
+			calculateVelocity(currN->particleDistribution, currM->density, currM->velocity);
 		}
 	}
 }
@@ -544,6 +530,7 @@ void SaveSnapshot(Snapshot* s, int snapshotIndex) {
 		for (int column = 0; column < s->width; ++column) {
 			MacroNode *macro = &(s->nodes[row * s->width + column]);
 			fprintf(file, "%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
+			//printf("%d,%d,%f,%f,%f\n", row, column, macro->velocity[0], macro->velocity[1], macro->density);
 		}
 	}
 	fclose(file);
@@ -554,14 +541,14 @@ int main(int argc, char *argv[]) {
 	MPI_Init(&argc, &argv);
 	InitGlobal();
 	GridPart grid;
-	int gridSize = 20;//= minimumRowCount(sizeof(GridNode), worldSize - 1, 10 * 1024);
+	int gridSize = 3;//= minimumRowCount(sizeof(GridNode), worldSize - 1, 10 * 1024);
 	if (!isMaster) InitGrid(&grid, gridSize, worldSize - 1, rank - 1);
 	Snapshot s ;
 	SnapshotPart sp ;
 	InitSnapshotParams(gridSize, gridSize);
 	if (isMaster)  InitSnapshot(gridSize, gridSize,&s);
 	else  InitSnapshotPart(grid.locHeight, grid.width,&sp);
-	int totaltime = 10;
+	int totaltime = 3;
 	int snapshotrate = 1;
 	for (int i = 0; i < totaltime; i++) {
 		if (0 == i%snapshotrate) {
