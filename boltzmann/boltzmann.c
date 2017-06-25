@@ -54,36 +54,6 @@ double modulusOfVector(double *vector);
 double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
-void sumVector(double *first, double *second, double *result) {
-	int i;
-	for (i = 0; i < 2; ++i) {
-		result[i] = first[i] + second[i];
-	}
-}
-
-void multiplyVector(double *vector, double multiplier, double *result) {
-	int i;
-	for (i = 0; i < 2; ++i) {
-		result[i] = vector[i] * multiplier;
-	}
-}
-
-double modulusOfVector(double *vector) {
-	return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
-}
-
-double scalarMultiplication(double *first, double *second) {
-	double result = 0;
-	int i;
-	for (i = 0; i < 2; ++i) {
-		result += first[i] * second[i];
-	}
-	return result;
-}
-
-double cosBetweenVectors(double *first, double *second) {
-	return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
-}
 #pragma endregion
 #pragma region tests
 void testVectorFunctions();
@@ -103,101 +73,6 @@ void testDensity();
 void testVelocity();
 
 void boundsComputationTest();
-//-----------Тесты-------------------------
-void testModelFunctions() {
-	testDensity();
-	testVelocity();
-	boundsComputationTest();
-}
-
-void boundsComputationTest() {
-	RowBounds firstBounds = getMyBounds(5, 3, 0);
-	if (firstBounds.first != 0 && firstBounds.last != 1) {
-		exit(103);
-	}
-	RowBounds secondBounds = getMyBounds(5, 3, 1);
-	if (secondBounds.first != 2 && secondBounds.last != 3) {
-		exit(104);
-	}
-	RowBounds thirdBounds = getMyBounds(5, 3, 2);
-	if (thirdBounds.first != 4 && thirdBounds.last != 4) {
-		exit(105);
-	}
-
-	firstBounds = getMyBounds(4, 3, 0);
-	if (firstBounds.first != 0 && firstBounds.last != 1) {
-		exit(106);
-	}
-	secondBounds = getMyBounds(4, 3, 1);
-	if (secondBounds.first != 2 && secondBounds.last != 2) {
-		exit(107);
-	}
-	thirdBounds = getMyBounds(4, 3, 2);
-	if (thirdBounds.first != 3 && thirdBounds.last != 3) {
-		exit(108);
-	}
-}
-
-void testVelocity() {
-	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-	double density = calculateDensity(particleDistribution);
-	double velocity[2];
-	calculateVelocity(particleDistribution, density, 0.1, velocity);
-	if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
-		exit(102);
-	}
-}
-
-void testDensity() {
-	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-	double density = calculateDensity(particleDistribution);
-	if (density != (8 + 0) / 2 * 9) {
-		exit(101);
-	}
-}
-
-void testScalarMultiplication() {
-	double first[2] = { 1, 2 };
-	double second[2] = { 3, 4 };
-	double scalar = scalarMultiplication(first, second);
-	if (scalar != 1 * 3 + 2 * 4) {
-		exit(5);
-	}
-}
-
-void testVectorModulus() {
-	double first[2] = { 4, 3 };
-	double modulus = modulusOfVector(first);
-	if (modulus != 5.) {
-		exit(4);
-	}
-}
-
-void testVectorMultiply() {
-	double first[2] = { 1, 2 };
-	double result[2];
-	multiplyVector(first, 2, result);
-	if (result[0] != 2 || result[1] != 4) {
-		exit(3);
-	}
-}
-
-void testVectorSum() {
-	double first[2] = { 1, 2 };
-	double second[2] = { 3, 4 };
-	double result[2];
-	sumVector(first, second, result);
-	if (result[0] != 4 || result[1] != 6) {
-		exit(2);
-	}
-}
-
-void testVectorFunctions() {
-	testVectorSum();
-	testVectorMultiply();
-	testVectorModulus();
-	testScalarMultiplication();
-}
 
 #pragma endregion
 #pragma region bounds
@@ -603,4 +478,134 @@ int main(int argc, char *argv[]) {
 }
 
 
+#pragma region vectorF
+void sumVector(double *first, double *second, double *result) {
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result[i] = first[i] + second[i];
+	}
+}
+
+void multiplyVector(double *vector, double multiplier, double *result) {
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result[i] = vector[i] * multiplier;
+	}
+}
+
+double modulusOfVector(double *vector) {
+	return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
+}
+
+double scalarMultiplication(double *first, double *second) {
+	double result = 0;
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result += first[i] * second[i];
+	}
+	return result;
+}
+
+double cosBetweenVectors(double *first, double *second) {
+	return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+}
+#pragma endregion
+#pragma region tests
+//-----------Тесты-------------------------
+void testModelFunctions() {
+	testDensity();
+	testVelocity();
+	boundsComputationTest();
+}
+
+void boundsComputationTest() {
+	RowBounds firstBounds = getMyBounds(5, 3, 0);
+	if (firstBounds.first != 0 && firstBounds.last != 1) {
+		exit(103);
+	}
+	RowBounds secondBounds = getMyBounds(5, 3, 1);
+	if (secondBounds.first != 2 && secondBounds.last != 3) {
+		exit(104);
+	}
+	RowBounds thirdBounds = getMyBounds(5, 3, 2);
+	if (thirdBounds.first != 4 && thirdBounds.last != 4) {
+		exit(105);
+	}
+
+	firstBounds = getMyBounds(4, 3, 0);
+	if (firstBounds.first != 0 && firstBounds.last != 1) {
+		exit(106);
+	}
+	secondBounds = getMyBounds(4, 3, 1);
+	if (secondBounds.first != 2 && secondBounds.last != 2) {
+		exit(107);
+	}
+	thirdBounds = getMyBounds(4, 3, 2);
+	if (thirdBounds.first != 3 && thirdBounds.last != 3) {
+		exit(108);
+	}
+}
+
+void testVelocity() {
+	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+	double density = calculateDensity(particleDistribution);
+	double velocity[2];
+	calculateVelocity(particleDistribution, density, 0.1, velocity);
+	if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
+		exit(102);
+	}
+}
+
+void testDensity() {
+	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+	double density = calculateDensity(particleDistribution);
+	if (density != (8 + 0) / 2 * 9) {
+		exit(101);
+	}
+}
+
+void testScalarMultiplication() {
+	double first[2] = { 1, 2 };
+	double second[2] = { 3, 4 };
+	double scalar = scalarMultiplication(first, second);
+	if (scalar != 1 * 3 + 2 * 4) {
+		exit(5);
+	}
+}
+
+void testVectorModulus() {
+	double first[2] = { 4, 3 };
+	double modulus = modulusOfVector(first);
+	if (modulus != 5.) {
+		exit(4);
+	}
+}
+
+void testVectorMultiply() {
+	double first[2] = { 1, 2 };
+	double result[2];
+	multiplyVector(first, 2, result);
+	if (result[0] != 2 || result[1] != 4) {
+		exit(3);
+	}
+}
+
+void testVectorSum() {
+	double first[2] = { 1, 2 };
+	double second[2] = { 3, 4 };
+	double result[2];
+	sumVector(first, second, result);
+	if (result[0] != 4 || result[1] != 6) {
+		exit(2);
+	}
+}
+
+void testVectorFunctions() {
+	testVectorSum();
+	testVectorMultiply();
+	testVectorModulus();
+	testScalarMultiplication();
+}
+
+#pragma endregion
 
