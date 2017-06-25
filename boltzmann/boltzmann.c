@@ -6,8 +6,6 @@
 
 #define LATTICE_DIRECTIONS 9
 
-int rank, worldSize;
-
 double weights[] = {4.0 / 9,
                     1.0 / 9, 1.0 / 9, 1.0 / 9, 1.0 / 9,
                     1.0 / 36, 1.0 / 36, 1.0 / 36, 1.0 / 36};
@@ -43,8 +41,24 @@ typedef struct {
     int last;
 } RowBounds;
 
+void testVectorFunctions();
 
-#pragma region vectorF
+void testVectorSum();
+
+void testVectorMultiply();
+
+void testVectorModulus();
+
+void testScalarMultiplication();
+
+void testModelFunctions();
+
+void testDensity();
+
+void testVelocity();
+
+void boundsComputationTest();
+
 void sumVector(double *first, double *second, double *result);
 
 void multiplyVector(double *vector, double multiplier, double *result);
@@ -54,6 +68,15 @@ double modulusOfVector(double *vector);
 double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
+
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
+
+double calculateDensity(double *particleDistribution);
+
+void calculateVelocity(double *particleDistribution, double macroscopicDensity, double latticeSpeed, double *result);
+
+#pragma region vectorF
+
 void sumVector(double *first, double *second, double *result) {
 	int i;
 	for (i = 0; i < 2; ++i) {
@@ -86,24 +109,7 @@ double cosBetweenVectors(double *first, double *second) {
 }
 #pragma endregion
 #pragma region tests
-void testVectorFunctions();
 
-void testVectorSum();
-
-void testVectorMultiply();
-
-void testVectorModulus();
-
-void testScalarMultiplication();
-
-void testModelFunctions();
-
-void testDensity();
-
-void testVelocity();
-
-void boundsComputationTest();
-//-----------“есты-------------------------
 void testModelFunctions() {
 	testDensity();
 	testVelocity();
@@ -201,7 +207,6 @@ void testVectorFunctions() {
 
 #pragma endregion
 #pragma region bounds
-RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
 /**
 * @param gridWidth ширина квадратной сетки
 * @param computationalProcessorsCount количество вычислитетей
@@ -460,6 +465,45 @@ void Collide(Grid *pg) {
 }
 #pragma endregion
 #pragma region Initial data
+void initSimulationParameters(const int argc, char **argv,
+                              const int worldSize,
+                              double *speed, double *relaxationTime, int *totalTime, int *snapshotRate,
+                              int *gridWidth) {
+    if (argc < 5) {
+        printf(
+        "usage: boltzman <lattice-speed>  <relaxation-time>  <simulation-time>  <snapshot-rate> (optional <grid-width>)\n");
+        exit(1);
+    }
+
+    if (sscanf(argv[1], "%lf", speed) != 1) {
+        fprintf(stderr, "speed is not double");
+        exit(1);
+    }
+    if (sscanf(argv[2], "%lf", relaxationTime) != 1) {
+        fprintf(stderr, "relaxation time is not double");
+        exit(1);
+    }
+    if (sscanf(argv[3], "%i", totalTime) != 1) {
+        fprintf(stderr, "simulation time is not integer");
+        exit(1);
+    }
+
+    if (sscanf(argv[4], "%i", snapshotRate) != 1) {
+        fprintf(stderr, "snapshot rate is not integer");
+        exit(1);
+    }
+
+    if (argc == 6) {
+        if (sscanf(argv[5], "%i", gridWidth) != 1) {
+            fprintf(stderr, "grid width is not integer");
+            exit(1);
+        }
+    } else {
+        // 100мб на каждый вычислитель
+        *gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
+    }
+}
+
 double generateNormalizedRandom() { return rand() / (double)RAND_MAX; }
 /**
  * @param from вектор, который проецируетс€
@@ -544,18 +588,24 @@ void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
 }
 #pragma endregion
 
-
 int main(int argc, char *argv[]) {
     testVectorFunctions();
     testModelFunctions();
+
+    int rank, worldSize, gridWidth, totalTime, snapshotRate;
+    double speed, relaxationTime;
+
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    if (worldSize < 2) {
+        printf("world is too small");
+        exit(1);
+    }
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    initSimulationParameters(argc, argv, worldSize, &speed, &relaxationTime, &totalTime, &snapshotRate, &gridWidth);
+
     Grid grid;
-    int gridWidth = minimumRowCount(sizeof(GridNode), worldSize - 1, 100 * 1024 * 1024);
-//    int gridWidth = 10;
-    double speed = 2;
-    double relaxationTime = 1;
     int isMaster = rank == 0;
 
     //—лужебные данные дл€ передачи снепшотов
@@ -571,8 +621,6 @@ int main(int argc, char *argv[]) {
         RowBounds rowBounds = getMyBounds(gridWidth, worldSize - 1, rank - 1);
         InitGrid(&grid, gridWidth, rowBounds, speed, relaxationTime);
     }
-    int totalTime = 100;
-    int snapshotRate = 10;
     MacroNode *snapshot;
     if (isMaster) {
         snapshot = calloc((size_t) gridWidth * gridWidth, sizeof(MacroNode));
