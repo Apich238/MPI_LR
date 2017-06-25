@@ -266,18 +266,18 @@ double calculateDensity(double *particleDistribution) {
 
 /**
  * @param direction направление
- * @param latticeSpeed скорость сетки
+ * @param c скорость сетки
  * @param velocity микроскопическа€ скорость
  * @return  оэффициент дл€ вычислени€ равновесного распределени€ по направлени€м
  */
-double s(int direction, double latticeSpeed, double *velocity) {
-    double scalar = scalarMultiplication((double *) elementalVectors[direction], velocity);
-    return weights[direction] * 3 *
-           (scalar + (3 * pow(scalar, 2) - scalarMultiplication(velocity, velocity)) / (latticeSpeed * 2)) /
-           latticeSpeed;
+double s(int direction, double c, double *velocity) {
+    double eu = scalarMultiplication((double *) elementalVectors[direction], velocity);
+    double u2 = scalarMultiplication(velocity, velocity);
+    return 3 * (eu + (3 * pow(eu, 2) - u2) / (c * 2)) / c;
 }
 
 /**
+ * feq[i]=w[i]*ro(1+3/c*(e[i],u)+3/2c^2*(3(e[i],u)^2-(u,u)))
  * @param latticeSpeed скорость сетки
  * @param density микроскопическа€ плотность
  * @param velocity микроскопическа€ скорость
@@ -514,7 +514,7 @@ double tangentProjectionCubed(double *from, double *to) {
     //“ак как здесь в качестве вектора to только элементарные вектора,
     //можно просто умножить элементарный вектор на проекцию
     double cos = cosBetweenVectors(from, to);
-    return cos > 0 ? pow(cos, 3) : generateNormalizedRandom() / 20;
+    return cos > 0 ? cos : generateNormalizedRandom() / 20;
 }
 
 /**
