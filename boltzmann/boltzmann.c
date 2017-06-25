@@ -41,8 +41,8 @@ typedef struct {
     int last;
 } RowBounds;
 
-double generateNormalizedRandom() { return rand() / (double) RAND_MAX; }
 
+#pragma region vectorF
 void sumVector(double *first, double *second, double *result);
 
 void multiplyVector(double *vector, double multiplier, double *result);
@@ -52,7 +52,38 @@ double modulusOfVector(double *vector);
 double scalarMultiplication(double *first, double *second);
 
 double cosBetweenVectors(double *first, double *second);
+void sumVector(double *first, double *second, double *result) {
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result[i] = first[i] + second[i];
+	}
+}
 
+void multiplyVector(double *vector, double multiplier, double *result) {
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result[i] = vector[i] * multiplier;
+	}
+}
+
+double modulusOfVector(double *vector) {
+	return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
+}
+
+double scalarMultiplication(double *first, double *second) {
+	double result = 0;
+	int i;
+	for (i = 0; i < 2; ++i) {
+		result += first[i] * second[i];
+	}
+	return result;
+}
+
+double cosBetweenVectors(double *first, double *second) {
+	return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
+}
+#pragma endregion
+#pragma region tests
 void testVectorFunctions();
 
 void testVectorSum();
@@ -70,12 +101,127 @@ void testDensity();
 void testVelocity();
 
 void boundsComputationTest();
+//-----------Тесты-------------------------
+void testModelFunctions() {
+	testDensity();
+	testVelocity();
+	boundsComputationTest();
+}
 
+void boundsComputationTest() {
+	RowBounds firstBounds = getMyBounds(5, 3, 0);
+	if (firstBounds.first != 0 && firstBounds.last != 1) {
+		exit(103);
+	}
+	RowBounds secondBounds = getMyBounds(5, 3, 1);
+	if (secondBounds.first != 2 && secondBounds.last != 3) {
+		exit(104);
+	}
+	RowBounds thirdBounds = getMyBounds(5, 3, 2);
+	if (thirdBounds.first != 4 && thirdBounds.last != 4) {
+		exit(105);
+	}
+
+	firstBounds = getMyBounds(4, 3, 0);
+	if (firstBounds.first != 0 && firstBounds.last != 1) {
+		exit(106);
+	}
+	secondBounds = getMyBounds(4, 3, 1);
+	if (secondBounds.first != 2 && secondBounds.last != 2) {
+		exit(107);
+	}
+	thirdBounds = getMyBounds(4, 3, 2);
+	if (thirdBounds.first != 3 && thirdBounds.last != 3) {
+		exit(108);
+	}
+}
+
+void testVelocity() {
+	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+	double density = calculateDensity(particleDistribution);
+	double velocity[2];
+	calculateVelocity(particleDistribution, density, 0.1, velocity);
+	if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
+		exit(102);
+	}
+}
+
+void testDensity() {
+	double particleDistribution[LATTICE_DIRECTIONS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+	double density = calculateDensity(particleDistribution);
+	if (density != (8 + 0) / 2 * 9) {
+		exit(101);
+	}
+}
+
+void testScalarMultiplication() {
+	double first[2] = { 1, 2 };
+	double second[2] = { 3, 4 };
+	double scalar = scalarMultiplication(first, second);
+	if (scalar != 1 * 3 + 2 * 4) {
+		exit(5);
+	}
+}
+
+void testVectorModulus() {
+	double first[2] = { 4, 3 };
+	double modulus = modulusOfVector(first);
+	if (modulus != 5.) {
+		exit(4);
+	}
+}
+
+void testVectorMultiply() {
+	double first[2] = { 1, 2 };
+	double result[2];
+	multiplyVector(first, 2, result);
+	if (result[0] != 2 || result[1] != 4) {
+		exit(3);
+	}
+}
+
+void testVectorSum() {
+	double first[2] = { 1, 2 };
+	double second[2] = { 3, 4 };
+	double result[2];
+	sumVector(first, second, result);
+	if (result[0] != 4 || result[1] != 6) {
+		exit(2);
+	}
+}
+
+void testVectorFunctions() {
+	testVectorSum();
+	testVectorMultiply();
+	testVectorModulus();
+	testScalarMultiplication();
+}
+
+#pragma endregion
+#pragma region bounds
 RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index);
+/**
+* @param gridWidth ширина квадратной сетки
+* @param computationalProcessorsCount количество вычислитетей
+* @param index номер вычислителя начиная с 0
+* @return Индексы первой и последней строк в сетке.
+*/
+RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index) {
+	int remainder = gridWidth % computationalProcessorsCount;
+	RowBounds res;
+	res.first = gridWidth / computationalProcessorsCount * index + (index < remainder ? index : remainder);
+	res.last = gridWidth / computationalProcessorsCount * (index + 1) - 1 + (index < remainder ? index + 1 : remainder);
+	return res;
+}
 
+int minimumRowCount(int dataTypeSizeInBytes, int numberOfComputationalNodes, int minimumSizeOfSystemPerNode) {
+	return (int)ceil((sqrt((minimumSizeOfSystemPerNode * numberOfComputationalNodes)
+		/ dataTypeSizeInBytes)));
+}
+#pragma endregion
+#pragma region LBM specific
 void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
                           int hasLowerBound, int row, int column);
-
 /**
  * @param particleDistribution распределение частиц по направлениям
  * @param macroscopicDensity микроскопическая плотность в точке
@@ -136,7 +282,183 @@ void calculateEquilibriumDistribution(double latticeSpeed, double density, doubl
         result[direction] = (1 + s(direction, latticeSpeed, velocity)) * density * weights[direction];
     }
 }
+void Streaming(Grid *pg, int rank, int worldSize) {
+	int hasUpperBound = rank != 1;
+	int hasLowerBound = rank != (worldSize - 1);
+	GridNode *upperBound, *lowerBound;
+	size_t rowSize = sizeof(GridNode) * pg->width;
 
+
+	//Обмен смежными строками сетки
+	if (hasUpperBound) {
+		upperBound = malloc(rowSize);
+		//Копируем то, что нужно передать
+		memcpy(upperBound, pg->nodes[0], rowSize);
+	}
+	if (hasLowerBound) {
+		lowerBound = malloc(rowSize);
+		//Копируем то, что нужно передать
+		memcpy(lowerBound, pg->nodes[pg->height - 1], rowSize);
+	}
+	MPI_Status status;
+	for (int i = 0; i < 2; ++i) {
+		if (hasLowerBound && (rank % 2 == i)) {
+			MPI_Sendrecv_replace(lowerBound, (int)rowSize, MPI_BYTE, rank + 1, 0, rank + 1, 0, MPI_COMM_WORLD,
+				&status);
+		}
+		else if (hasUpperBound & (rank % 2 != i)) {
+			MPI_Sendrecv_replace(upperBound, (int)rowSize, MPI_BYTE, rank - 1, 0, rank - 1, 0, MPI_COMM_WORLD,
+				&status);
+		}
+	}
+
+	//обработка распространения
+	for (int row = 0; row < pg->height; row++) {
+		for (int column = 0; column < pg->width; column++) {
+			fillTempFieldForNode(pg, upperBound, hasUpperBound, lowerBound, hasLowerBound, row, column);
+		}
+	}
+}
+
+/**
+* Заполняет поле tmp в ноде сетки
+* @param grid сетка
+* @param upperBound верхняя граница
+* @param hasUpperBound есть ли верхняя граница у сетки
+* @param lowerBound нижняя граница
+* @param hasLowerBound есть ли нижняя граница у сетки
+* @param row строка ноды
+* @param column столбец ноды
+*/
+void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
+	int hasLowerBound, int row, int column) {
+	GridNode *currentNode = &grid->nodes[row][column];
+	double *tmp = currentNode->tmp;
+	tmp[0] = currentNode->particleDistribution[0];
+
+	int firstRow = row == 0;
+	int firstColumn = column == 0;
+	int lastRow = row == grid->height - 1;
+	int lastColumn = column == grid->width - 1;
+
+	if (firstRow) {
+		if (hasUpperBound) {
+			tmp[4] = upperBound[column].particleDistribution[4];
+		}
+		else {
+			tmp[4] = currentNode->particleDistribution[2];
+		}
+	}
+	else {
+		tmp[4] = grid->nodes[row - 1][column].particleDistribution[4];
+	}
+	if (firstColumn) {
+		tmp[1] = currentNode->particleDistribution[3];
+	}
+	else {
+		tmp[1] = grid->nodes[row][column - 1].particleDistribution[1];
+	}
+	if (lastRow) {
+		if (hasLowerBound) {
+			tmp[2] = lowerBound[column].particleDistribution[2];
+		}
+		else {
+			tmp[2] = currentNode->particleDistribution[4];
+		}
+	}
+	else {
+		tmp[2] = grid->nodes[row + 1][column].particleDistribution[2];
+	}
+	if (lastColumn) {
+		tmp[3] = currentNode->particleDistribution[1];
+	}
+	else {
+		tmp[3] = grid->nodes[row][column + 1].particleDistribution[3];
+	}
+	if (firstRow || firstColumn) {
+		if (!firstColumn && hasUpperBound) {
+			tmp[8] = upperBound[column - 1].particleDistribution[8];
+
+		}
+		else {
+			tmp[8] = currentNode->particleDistribution[6];
+		}
+	}
+	else {
+		tmp[8] = grid->nodes[row - 1][column - 1].particleDistribution[8];
+	}
+	if (lastRow || lastColumn) {
+		if (!lastColumn && hasLowerBound) {
+			tmp[6] = lowerBound[column + 1].particleDistribution[6];
+		}
+		else {
+			tmp[6] = currentNode->particleDistribution[8];
+		}
+	}
+	else {
+		tmp[6] = grid->nodes[row + 1][column + 1].particleDistribution[6];
+	}
+	if (firstRow || lastColumn) {
+		if (!lastColumn && hasUpperBound) {
+			tmp[7] = upperBound[column + 1].particleDistribution[7];
+		}
+		else {
+			tmp[7] = currentNode->particleDistribution[5];
+		}
+	}
+	else {
+		tmp[7] = grid->nodes[row - 1][column + 1].particleDistribution[7];
+	}
+	if (lastRow || firstColumn) {
+		if (!firstColumn && hasLowerBound) {
+			tmp[5] = lowerBound[column - 1].particleDistribution[5];
+		}
+		else {
+			tmp[5] = currentNode->particleDistribution[7];
+		}
+	}
+	else {
+		tmp[5] = grid->nodes[row + 1][column - 1].particleDistribution[5];
+	}
+}
+
+/**
+* @param tempDistribution значение распределения в точке, полученное во время шага Streaming
+* @param equilibriumDistribution равновесное распределение на основе
+* @param relaxationTime время релаксации газа
+* @param result новое распределение частиц
+*/
+void updateDistribution(double *tempDistribution,
+	double *equilibriumDistribution,
+	double relaxationTime,
+	double *result) {
+	for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
+		result[direction] = tempDistribution[direction] +
+			(equilibriumDistribution[direction] - tempDistribution[direction]) / relaxationTime;
+	}
+}
+
+void Collide(Grid *pg) {
+	//обработка столкновений
+	for (int row = 0; row < pg->height; ++row) {
+		for (int column = 0; column < pg->width; ++column) {
+			GridNode *currentNode = &pg->nodes[row][column];
+			// плотность.
+			double density = calculateDensity(currentNode->tmp);
+			// скорость в точке
+			double velocity[2];
+			calculateVelocity(currentNode->tmp, density, pg->latticeSpeed, velocity);
+			double equilibriumDistribution[LATTICE_DIRECTIONS];
+			calculateEquilibriumDistribution(pg->latticeSpeed, density, velocity, equilibriumDistribution);
+			// новое распределение
+			updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
+				currentNode->particleDistribution);
+		}
+	}
+}
+#pragma endregion
+#pragma region Initial data
+double generateNormalizedRandom() { return rand() / (double)RAND_MAX; }
 /**
  * @param from вектор, который проецируется
  * @param to векток, на который нужно спроецировать
@@ -189,167 +511,9 @@ void InitGrid(Grid *pg, int gridSize, RowBounds bounds, double latticeSpeed, dou
 void FreeGrid(Grid *pg) {
     //высвобождение ресурсов решётки
 }
+#pragma endregion
 
-void Streaming(Grid *pg, int rank, int worldSize) {
-    int hasUpperBound = rank != 1;
-    int hasLowerBound = rank != (worldSize - 1);
-    GridNode *upperBound, *lowerBound;
-    size_t rowSize = sizeof(GridNode) * pg->width;
-
-
-    //Обмен смежными строками сетки
-    if (hasUpperBound) {
-        upperBound = malloc(rowSize);
-        //Копируем то, что нужно передать
-        memcpy(upperBound, pg->nodes[0], rowSize);
-    }
-    if (hasLowerBound) {
-        lowerBound = malloc(rowSize);
-        //Копируем то, что нужно передать
-        memcpy(lowerBound, pg->nodes[pg->height - 1], rowSize);
-    }
-    MPI_Status status;
-    for (int i = 0; i < 2; ++i) {
-        if (hasLowerBound && (rank % 2 == i)) {
-            MPI_Sendrecv_replace(lowerBound, (int) rowSize, MPI_BYTE, rank + 1, 0, rank + 1, 0, MPI_COMM_WORLD,
-                                 &status);
-        } else if (hasUpperBound & (rank % 2 != i)) {
-            MPI_Sendrecv_replace(upperBound, (int) rowSize, MPI_BYTE, rank - 1, 0, rank - 1, 0, MPI_COMM_WORLD,
-                                 &status);
-        }
-    }
-
-    //обработка распространения
-    for (int row = 0; row < pg->height; row++) {
-        for (int column = 0; column < pg->width; column++) {
-            fillTempFieldForNode(pg, upperBound, hasUpperBound, lowerBound, hasLowerBound, row, column);
-        }
-    }
-}
-
-/**
- * Заполняет поле tmp в ноде сетки
- * @param grid сетка
- * @param upperBound верхняя граница
- * @param hasUpperBound есть ли верхняя граница у сетки
- * @param lowerBound нижняя граница
- * @param hasLowerBound есть ли нижняя граница у сетки
- * @param row строка ноды
- * @param column столбец ноды
- */
-void fillTempFieldForNode(const Grid *grid, const GridNode *upperBound, int hasUpperBound, const GridNode *lowerBound,
-                          int hasLowerBound, int row, int column) {
-    GridNode *currentNode = &grid->nodes[row][column];
-    double *tmp = currentNode->tmp;
-    tmp[0] = currentNode->particleDistribution[0];
-
-    int firstRow = row == 0;
-    int firstColumn = column == 0;
-    int lastRow = row == grid->height - 1;
-    int lastColumn = column == grid->width - 1;
-
-    if (firstRow) {
-        if (hasUpperBound) {
-            tmp[4] = upperBound[column].particleDistribution[4];
-        } else {
-            tmp[4] = currentNode->particleDistribution[2];
-        }
-    } else {
-        tmp[4] = grid->nodes[row - 1][column].particleDistribution[4];
-    }
-    if (firstColumn) {
-        tmp[1] = currentNode->particleDistribution[3];
-    } else {
-        tmp[1] = grid->nodes[row][column - 1].particleDistribution[1];
-    }
-    if (lastRow) {
-        if (hasLowerBound) {
-            tmp[2] = lowerBound[column].particleDistribution[2];
-        } else {
-            tmp[2] = currentNode->particleDistribution[4];
-        }
-    } else {
-        tmp[2] = grid->nodes[row + 1][column].particleDistribution[2];
-    }
-    if (lastColumn) {
-        tmp[3] = currentNode->particleDistribution[1];
-    } else {
-        tmp[3] = grid->nodes[row][column + 1].particleDistribution[3];
-    }
-    if (firstRow || firstColumn) {
-        if (!firstColumn && hasUpperBound) {
-            tmp[8] = upperBound[column - 1].particleDistribution[8];
-
-        } else {
-            tmp[8] = currentNode->particleDistribution[6];
-        }
-    } else {
-        tmp[8] = grid->nodes[row - 1][column - 1].particleDistribution[8];
-    }
-    if (lastRow || lastColumn) {
-        if (!lastColumn && hasLowerBound) {
-            tmp[6] = lowerBound[column + 1].particleDistribution[6];
-        } else {
-            tmp[6] = currentNode->particleDistribution[8];
-        }
-    } else {
-        tmp[6] = grid->nodes[row + 1][column + 1].particleDistribution[6];
-    }
-    if (firstRow || lastColumn) {
-        if (!lastColumn && hasUpperBound) {
-            tmp[7] = upperBound[column + 1].particleDistribution[7];
-        } else {
-            tmp[7] = currentNode->particleDistribution[5];
-        }
-    } else {
-        tmp[7] = grid->nodes[row - 1][column + 1].particleDistribution[7];
-    }
-    if (lastRow || firstColumn) {
-        if (!firstColumn && hasLowerBound) {
-            tmp[5] = lowerBound[column - 1].particleDistribution[5];
-        } else {
-            tmp[5] = currentNode->particleDistribution[7];
-        }
-    } else {
-        tmp[5] = grid->nodes[row + 1][column - 1].particleDistribution[5];
-    }
-}
-
-/**
- * @param tempDistribution значение распределения в точке, полученное во время шага Streaming
- * @param equilibriumDistribution равновесное распределение на основе
- * @param relaxationTime время релаксации газа
- * @param result новое распределение частиц
- */
-void updateDistribution(double *tempDistribution,
-                        double *equilibriumDistribution,
-                        double relaxationTime,
-                        double *result) {
-    for (int direction = 0; direction < LATTICE_DIRECTIONS; ++direction) {
-        result[direction] = tempDistribution[direction] +
-                            (equilibriumDistribution[direction] - tempDistribution[direction]) / relaxationTime;
-    }
-}
-
-void Collide(Grid *pg) {
-    //обработка столкновений
-    for (int row = 0; row < pg->height; ++row) {
-        for (int column = 0; column < pg->width; ++column) {
-            GridNode *currentNode = &pg->nodes[row][column];
-            // плотность.
-            double density = calculateDensity(currentNode->tmp);
-            // скорость в точке
-            double velocity[2];
-            calculateVelocity(currentNode->tmp, density, pg->latticeSpeed, velocity);
-            double equilibriumDistribution[LATTICE_DIRECTIONS];
-            calculateEquilibriumDistribution(pg->latticeSpeed, density, velocity, equilibriumDistribution);
-            // новое распределение
-            updateDistribution(currentNode->tmp, equilibriumDistribution, pg->relaxationTime,
-                               currentNode->particleDistribution);
-        }
-    }
-}
-
+#pragma region snapshots
 void getSnapshot(Grid *pg, MacroNode *snapshot) {
     for (int row = 0; row < pg->height; ++row) {
         for (int column = 0; column < pg->width; ++column) {
@@ -376,25 +540,8 @@ void SaveSnapshots(MacroNode *snapshots, int width, int snapshotIndex) {
     }
     fclose(file);
 }
+#pragma endregion
 
-/**
- * @param gridWidth ширина квадратной сетки
- * @param computationalProcessorsCount количество вычислитетей
- * @param index номер вычислителя начиная с 0
- * @return Индексы первой и последней строк в сетке.
- */
-RowBounds getMyBounds(int gridWidth, int computationalProcessorsCount, int index) {
-    int remainder = gridWidth % computationalProcessorsCount;
-    RowBounds res;
-    res.first = gridWidth / computationalProcessorsCount * index + (index < remainder ? index : remainder);
-    res.last = gridWidth / computationalProcessorsCount * (index + 1) - 1 + (index < remainder ? index + 1 : remainder);
-    return res;
-}
-
-int minimumRowCount(int dataTypeSizeInBytes, int numberOfComputationalNodes, int minimumSizeOfSystemPerNode) {
-    return (int) ceil((sqrt((minimumSizeOfSystemPerNode * numberOfComputationalNodes)
-                            / dataTypeSizeInBytes)));
-}
 
 void initSimulationParameters(const int argc, char **argv,
                               const int worldSize,
@@ -497,129 +644,5 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
 }
 
-void sumVector(double *first, double *second, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = first[i] + second[i];
-    }
-}
 
-void multiplyVector(double *vector, double multiplier, double *result) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result[i] = vector[i] * multiplier;
-    }
-}
 
-double modulusOfVector(double *vector) {
-    return sqrt(pow(vector[0], 2) + pow(vector[1], 2));
-}
-
-double scalarMultiplication(double *first, double *second) {
-    double result = 0;
-    int i;
-    for (i = 0; i < 2; ++i) {
-        result += first[i] * second[i];
-    }
-    return result;
-}
-
-double cosBetweenVectors(double *first, double *second) {
-    return scalarMultiplication(first, second) / (modulusOfVector(first) * modulusOfVector(second));
-}
-
-//-----------Тесты-------------------------
-void testModelFunctions() {
-    testDensity();
-    testVelocity();
-    boundsComputationTest();
-}
-
-void boundsComputationTest() {
-    RowBounds firstBounds = getMyBounds(5, 3, 0);
-    if (firstBounds.first != 0 && firstBounds.last != 1) {
-        exit(103);
-    }
-    RowBounds secondBounds = getMyBounds(5, 3, 1);
-    if (secondBounds.first != 2 && secondBounds.last != 3) {
-        exit(104);
-    }
-    RowBounds thirdBounds = getMyBounds(5, 3, 2);
-    if (thirdBounds.first != 4 && thirdBounds.last != 4) {
-        exit(105);
-    }
-
-    firstBounds = getMyBounds(4, 3, 0);
-    if (firstBounds.first != 0 && firstBounds.last != 1) {
-        exit(106);
-    }
-    secondBounds = getMyBounds(4, 3, 1);
-    if (secondBounds.first != 2 && secondBounds.last != 2) {
-        exit(107);
-    }
-    thirdBounds = getMyBounds(4, 3, 2);
-    if (thirdBounds.first != 3 && thirdBounds.last != 3) {
-        exit(108);
-    }
-}
-
-void testVelocity() {
-    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    double density = calculateDensity(particleDistribution);
-    double velocity[2];
-    calculateVelocity(particleDistribution, density, 0.1, velocity);
-    if (velocity[0] != -0.0055555555555555601 || velocity[1] != -0.016666666666666666) {
-        exit(102);
-    }
-}
-
-void testDensity() {
-    double particleDistribution[LATTICE_DIRECTIONS] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-    double density = calculateDensity(particleDistribution);
-    if (density != (8 + 0) / 2 * 9) {
-        exit(101);
-    }
-}
-
-void testScalarMultiplication() {
-    double first[2] = {1, 2};
-    double second[2] = {3, 4};
-    double scalar = scalarMultiplication(first, second);
-    if (scalar != 1 * 3 + 2 * 4) {
-        exit(5);
-    }
-}
-
-void testVectorModulus() {
-    double first[2] = {4, 3};
-    double modulus = modulusOfVector(first);
-    if (modulus != 5.) {
-        exit(4);
-    }
-}
-
-void testVectorMultiply() {
-    double first[2] = {1, 2};
-    double result[2];
-    multiplyVector(first, 2, result);
-    if (result[0] != 2 || result[1] != 4) {
-        exit(3);
-    }
-}
-
-void testVectorSum() {
-    double first[2] = {1, 2};
-    double second[2] = {3, 4};
-    double result[2];
-    sumVector(first, second, result);
-    if (result[0] != 4 || result[1] != 6) {
-        exit(2);
-    }
-}
-
-void testVectorFunctions() {
-    testVectorSum();
-    testVectorMultiply();
-    testVectorModulus();
-    testScalarMultiplication();
-}
