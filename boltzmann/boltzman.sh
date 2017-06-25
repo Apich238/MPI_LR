@@ -1,2 +1,2 @@
 #!/bin/bash
-mpirun /home/andrey.efanov/thirdLab/boltzmann/boltzmann.out
+mpirun /home/andrey.efanov/thirdLab/boltzmann/boltzmann.out 1 5 100 10 1000
