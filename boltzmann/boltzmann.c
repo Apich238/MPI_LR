@@ -608,6 +608,15 @@ int main(int argc, char *argv[]) {
     Grid grid;
     int isMaster = rank == 0;
 
+	if (isMaster) {
+		printf("World size = %d\n", worldSize);
+		printf("speed = %lf\n", speed);
+		printf("relaxationTime = %lf\n", relaxationTime);
+		printf("totalTime = %d\n", totalTime);
+		printf("snapshotRate = %d\n", snapshotRate);
+		printf("gridWidth = %d\n", gridWidth);
+	}
+
     //Служебные данные для передачи снепшотов
     int *snapshotSizes = calloc((size_t) worldSize, sizeof(int));
     int *snapshotOffsets = calloc((size_t) worldSize, sizeof(int));
@@ -627,7 +636,7 @@ int main(int argc, char *argv[]) {
     } else {
         snapshot = calloc((size_t) grid.height * grid.width, sizeof(MacroNode));
     }
-    double timeBefore = MPI_Wtime();
+	double timeBefore = MPI_Wtime();
     for (int i = 0; i < totalTime; i++) {
         if (i % snapshotRate == 0) {
             if (!isMaster) {
@@ -643,9 +652,11 @@ int main(int argc, char *argv[]) {
             Streaming(&grid, rank, worldSize);
             Collide(&grid);
         }
-    }
-    double timeAfter = MPI_Wtime();
-    printf("Algorithm time is %lf", timeAfter - timeBefore);
+	}
+	double timeAfter = MPI_Wtime();
+	if(isMaster) {
+		printf("Algorithm time is %lf", timeAfter - timeBefore);
+	}
     free(snapshot);
     if (!isMaster) {
         FreeGrid(&grid);
